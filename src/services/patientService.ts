@@ -1,6 +1,6 @@
 import { patients } from '../../data/patients';
-import { PrivatePatient } from '../types';
-// import toNewPatient from '../utils';
+import { PrivatePatient, NewPatient, Patient } from '../types';
+import { v1 as uuid } from 'uuid';
 
 const getPrivatePatients = (): PrivatePatient[] => {
   return patients.map(
@@ -14,21 +14,16 @@ const getPrivatePatients = (): PrivatePatient[] => {
   );
 };
 
-// const addNewPatient = (patient: Patient): Patient => {
-//   try {
-//     const newDiaryEntry = toNewPatient(req.body);
-//     const addedEntry = diaryService.addDiary(newDiaryEntry);
-//     res.json(addedEntry);
-//   } catch (error: unknown) {
-//     let errorMessage = 'Something went wrong.';
-//     if (error instanceof Error) {
-//       errorMessage += ' Error: ' + error.message;
-//     }
-//     res.status(400).send(errorMessage);
-//   }
-// };
+const addNewPatient = (patient: NewPatient): Patient => {
+  const newPatient = {
+    id: uuid(),
+    ...patient,
+  };
+  patients.push(newPatient);
+  return newPatient;
+};
 
 export default {
   getPrivatePatients,
-  // addNewPatient,
+  addNewPatient,
 };

@@ -1,5 +1,11 @@
 ###
 GET http://localhost:3001/api/patients
 
-###
-GET http://localhost:3001/api/patients/d27736ec-f723-11e9-8f0b-362b9e155667
+### John McClane Hospital entry with discharge
+GET http://localhost:3001/api/patients/d2773336-f723-11e9-8f0b-362b9e155667
+
+### Martin Riggs Occupation Healthcare with sick leave
+GET http://localhost:3001/api/patients/d2773598-f723-11e9-8f0b-362b9e155667
+
+### Dana Scully multiple healthcare entries
+GET http://localhost:3001/api/patients/d2773822-f723-11e9-8f0b-362b9e155667

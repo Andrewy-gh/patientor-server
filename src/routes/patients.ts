@@ -11,7 +11,11 @@ router.get('/', (_req, res) => {
 router.get('/:id', (req, res) => {
   // check id type guard
   const patient = patientService.getNonSensitivePatient(req.params.id);
-  res.send(patient);
+  if (patient) {
+    res.send(patient);
+  } else {
+    res.sendStatus(404);
+  }
 });
 
 router.post('/', (req, res) => {

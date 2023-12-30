@@ -14,7 +14,9 @@ const getNonSensitivePatients = (): NonSensitivePatient[] => {
   );
 };
 
-const getNonSensitivePatient = (id: string): Patient | undefined => {
+const getNonSensitivePatient = (
+  id: string
+): NonSensitivePatient | undefined => {
   return patients.find((patient) => patient.id === id);
 };
 

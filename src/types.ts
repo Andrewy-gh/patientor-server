@@ -1,9 +1,11 @@
+import { Patients } from "./db/generated.js";
+
 export interface Diagnosis {
   code: string;
   name: string;
   latin?: string;
 }
-export type { Gender } from './db/generated.js';
+export type { Gender } from "./db/generated.js";
 
 // ? Entry types
 interface BaseEntry {
@@ -11,14 +13,14 @@ interface BaseEntry {
   description: string;
   date: string;
   specialist: string;
-  diagnosisCodes?: Array<Diagnosis['code']>;
+  diagnosisCodes?: Array<Diagnosis["code"]>;
 }
 
 export enum HealthCheckRating {
-  'Healthy' = 0,
-  'LowRisk' = 1,
-  'HighRisk' = 2,
-  'CriticalRisk' = 3,
+  "Healthy" = 0,
+  "LowRisk" = 1,
+  "HighRisk" = 2,
+  "CriticalRisk" = 3,
 }
 
 // Hospital entry: property
@@ -28,7 +30,7 @@ interface Discharge {
 }
 
 interface HospitalEntry extends BaseEntry {
-  type: 'Hospital';
+  type: "Hospital";
   discharge: Discharge;
 }
 
@@ -39,13 +41,13 @@ interface SickLeave {
 }
 
 interface OccupationalHealthcareEntry extends BaseEntry {
-  type: 'OccupationalHealthcare';
+  type: "OccupationalHealthcare";
   employerName: string;
   sickLeave?: SickLeave;
 }
 
 interface HealthCheckEntry extends BaseEntry {
-  type: 'HealthCheck';
+  type: "HealthCheck";
   healthCheckRating: HealthCheckRating;
 }
 
@@ -64,6 +66,9 @@ export interface Patient {
   entries?: Entry[];
 }
 
-export type NewPatient = Omit<Patient, 'id' | 'entries'>;
+export type NewPatientInput = Omit<
+  Patients,
+  "id" | "created_at" | "date_of_birth"
+> & { dateOfBirth: string };
 
-export type NonSensitivePatient = Omit<Patient, 'ssn' | 'entries'>;
+export type NonSensitivePatient = Omit<Patient, "ssn" | "entries">;

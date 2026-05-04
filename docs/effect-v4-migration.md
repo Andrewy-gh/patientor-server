@@ -49,7 +49,15 @@ That keeps the migration small while still using native Effect patterns where th
 
 Effect has native config handling. `Config` describes required values and validation. `ConfigProvider` decides where values come from. By default, Effect can read from environment variables.
 
-Keep `dotenv` as a Node startup concern if local development still relies on `.env`. Effect reads environment variables, but it does not need to own loading `.env` files.
+For this migration, let Effect own local `.env` loading too. Use
+`ConfigProvider.fromDotEnv()` at startup and add it to the main layer. This keeps
+config parsing and config source selection in the same Effect-native path, and
+it avoids mutating `process.env` with `dotenv.config()`.
+
+Important behavior note: `ConfigProvider.fromDotEnv()` reads `.env` into an
+Effect config provider. It does not globally update `process.env`. Code that
+still reads `process.env` directly will not see those `.env` values unless it is
+migrated to `Config` or you keep `dotenv` temporarily for that legacy path.
 
 ```ts
 // src/config.ts
@@ -116,6 +124,30 @@ const program = Effect.gen(function* () {
   ]),
 );
 ```
+
+Use `ConfigProvider.fromDotEnv()` when the application should read local `.env`
+values through Effect:
+
+```ts
+import { NodeServices } from "@effect/platform-node";
+import { ConfigProvider, Layer } from "effect";
+
+const DotEnvLive = ConfigProvider.layerAdd(
+  ConfigProvider.fromDotEnv(),
+  { asPrimary: true },
+);
+
+const MainLive = HttpServerLive.pipe(
+  Layer.provide(AppLive),
+  Layer.provide(DotEnvLive),
+  Layer.provide(NodeServices.layer),
+);
+```
+
+`fromDotEnv()` needs `NodeServices.layer` because it reads from the filesystem.
+`layerAdd(..., { asPrimary: true })` makes `.env` values take priority over the
+default environment provider for config lookups. Remove the package-level
+`dotenv` dependency once no code path needs `dotenv.config()`.
 
 ## 2. Kysely Database Service
 
@@ -348,11 +380,14 @@ import { Layer } from "effect";
 import { AppConfigLive } from "./config.js";
 import { DatabaseLive } from "./db/database.js";
 
-export const AppLive = Layer.mergeAll(
-  AppConfigLive,
-  DatabaseLive,
-);
+export const AppLive = DatabaseLive.pipe(Layer.provideMerge(AppConfigLive));
 ```
+
+Use `Layer.mergeAll` only for independent layers. It starts the layers in
+parallel, so it should not combine a layer with another layer that needs its
+service. Because `DatabaseLive` reads `AppConfigService`, wire config into the
+database layer with `Layer.provideMerge`. That builds the dependency in the
+right order and still keeps both services available to the app.
 
 ```ts
 // src/http/server.ts
@@ -365,7 +400,7 @@ import { HttpRoutes } from "./routes.js";
 
 const NodeServerLive = Layer.effect(HttpServer.HttpServer)(Effect.gen(function* () {
   const config = yield* AppConfigService;
-  return NodeHttpServer.make(createServer, { port: config.port });
+  return yield* NodeHttpServer.make(createServer, { port: config.port });
 })).pipe(
   Layer.provide(NodeHttpServer.layerHttpServices),
 );
@@ -385,24 +420,35 @@ export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(
 
 The dynamic-port version is better for this repo because the port comes from native config.
 
+Important v4 beta type note: `NodeHttpServer.make(...)` returns an `Effect`
+that builds the server service. Inside `Effect.gen`, use
+`return yield* NodeHttpServer.make(...)`. Returning `NodeHttpServer.make(...)`
+directly makes the layer provide an Effect value instead of an HTTP server
+service, which can surface as an unsafe-argument lint warning or a nested
+`Effect<Effect<...>>` type error.
+
 ```ts
 // src/index.ts
-import { NodeRuntime } from "@effect/platform-node";
-import dotenv from "dotenv";
-import { Layer } from "effect";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { ConfigProvider, Layer } from "effect";
 import { AppLive } from "./layers.js";
 import { HttpServerLive } from "./http/server.js";
 
-dotenv.config();
+const DotEnvLive = ConfigProvider.layerAdd(
+  ConfigProvider.fromDotEnv(),
+  { asPrimary: true },
+);
 
 const MainLive = HttpServerLive.pipe(
   Layer.provide(AppLive),
+  Layer.provide(DotEnvLive),
+  Layer.provide(NodeServices.layer),
 );
 
 Layer.launch(MainLive).pipe(NodeRuntime.runMain);
 ```
 
-`Layer.launch` keeps the server alive and manages resource lifetime. `NodeRuntime.runMain` is the Node process entry point.
+`Layer.launch` keeps the server alive and manages resource lifetime. `NodeRuntime.runMain` is the Node process entry point. `NodeServices.layer` provides the Node filesystem service needed by `ConfigProvider.fromDotEnv()`.
 
 ## 6. Where the Main Effect APIs Belong
 

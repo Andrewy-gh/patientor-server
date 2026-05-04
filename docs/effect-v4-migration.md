@@ -10,6 +10,10 @@ The user impact should be boring in the best way: the API keeps returning the sa
 - TypeScript uses `NodeNext`.
 - Effect is `effect@4.0.0-beta.60`.
 - Use Effect v4 `Context.Service`, not `Context.Tag`.
+- Use Effect v4 `Effect.catch`, not `Effect.catchAll`. In this beta,
+  `Effect.catch` is the public replacement for the Effect 3 `catchAll` API.
+  Use `Effect.catchTag` when handling one tagged error type such as
+  `DiagnosisReadError`.
 - Use `@effect/vitest@4.0.0-beta.60` for tests. It provides Effect-aware `it.effect`, `layer`, and `assert` helpers on top of the Vitest runner.
 - The `vitest` CLI still runs tests because `@effect/vitest` has Vitest as a peer dependency. Keep the `npm test` script as `vitest run`, but import test APIs from `@effect/vitest`, not `vitest`.
 - The repo currently depends on `effect`, but native Node HTTP examples require `@effect/platform-node`.
@@ -193,19 +197,25 @@ Migrated services should return Effects. That makes dependencies visible in the 
 
 ```ts
 // src/services/diagnosisService.ts
-import { Effect } from "effect";
+import { Data, Effect } from "effect";
 import { Database } from "../db/database.js";
+
+export class DiagnosisReadError extends Data.TaggedClass("DiagnosisReadError")<{
+  readonly cause: unknown;
+}> {}
 
 export const getDiagnoses = Effect.gen(function* () {
   const db = yield* Database;
 
-  const diagnoses = yield* Effect.promise(() =>
-    db
-      .selectFrom("diagnoses")
-      .select(["code", "name", "latin"])
-      .orderBy("code")
-      .execute(),
-  );
+  const diagnoses = yield* Effect.tryPromise({
+    try: () =>
+      db
+        .selectFrom("diagnoses")
+        .select(["code", "name", "latin"])
+        .orderBy("code")
+        .execute(),
+    catch: (cause) => new DiagnosisReadError({ cause }),
+  });
 
   return diagnoses.map((diagnosis) => ({
     code: diagnosis.code,
@@ -216,6 +226,18 @@ export const getDiagnoses = Effect.gen(function* () {
 ```
 
 Keep the Kysely query plain. The useful change is dependency ownership, not rewriting every query.
+
+If a service can fail, give that failure a narrow tagged error. Tagged errors
+make route behavior explicit and let routes handle known failures without
+catching every possible defect.
+
+```ts
+import { Data } from "effect";
+
+export class DiagnosisReadError extends Data.TaggedClass("DiagnosisReadError")<{
+  readonly cause: unknown;
+}> {}
+```
 
 ## 4. Native HTTP Routes
 
@@ -230,7 +252,7 @@ import {
   HttpRouter,
   HttpServerResponse,
 } from "effect/unstable/http";
-import * as diagnosisService from "../services/diagnosisService.js";
+import { getDiagnoses } from "../services/diagnosisService.js";
 
 const pingRoute = HttpRouter.route(
   "GET",
@@ -241,9 +263,9 @@ const pingRoute = HttpRouter.route(
 const diagnosesRoute = HttpRouter.route(
   "GET",
   "/api/diagnoses",
-  diagnosisService.getDiagnoses.pipe(
+  getDiagnoses.pipe(
     Effect.flatMap((diagnoses) => HttpServerResponse.json(diagnoses)),
-    Effect.catchAll((error) =>
+    Effect.catchTag("DiagnosisReadError", (error) =>
       Effect.sync(() => {
         console.error(error);
         return HttpServerResponse.empty({ status: 500 });
@@ -267,7 +289,7 @@ export const HttpRoutes = HttpRouter.use((router) =>
     yield* router.add(
       "GET",
       "/api/diagnoses",
-      diagnosisService.getDiagnoses.pipe(
+      getDiagnoses.pipe(
         Effect.flatMap((diagnoses) => HttpServerResponse.json(diagnoses)),
       ),
     );
@@ -276,6 +298,45 @@ export const HttpRoutes = HttpRouter.use((router) =>
 ```
 
 Prefer the first style if it typechecks cleanly in this repo; prefer the builder style when adding many related routes.
+
+While Express is still in place, the route needs a small bridge at the route
+edge. Do not import a default `diagnosisService` object after migrating the
+service to named Effect exports.
+
+```ts
+// src/routes/diagnoses.ts
+import { Effect, Layer } from "effect";
+import express from "express";
+import { AppConfigLive } from "../config.js";
+import { DatabaseLive } from "../db/database.js";
+import { getDiagnoses } from "../services/diagnosisService.js";
+
+const router = express.Router();
+const RouteLive = DatabaseLive.pipe(Layer.provide(AppConfigLive));
+
+router.get("/", (_req, res) => {
+  void getDiagnoses.pipe(
+    Effect.provide(RouteLive),
+    Effect.flatMap((diagnoses) =>
+      Effect.sync(() => {
+        res.send(diagnoses);
+      }),
+    ),
+    Effect.catchTag("DiagnosisReadError", (error) =>
+      Effect.sync(() => {
+        console.error(error);
+        res.sendStatus(500);
+      }),
+    ),
+    Effect.runPromise,
+  );
+});
+
+export default router;
+```
+
+This is a temporary bridge. Once the HTTP server is native Effect, provide
+`DatabaseLive` from the app layer instead of inside each route.
 
 ## 5. App Layer and Server Startup
 

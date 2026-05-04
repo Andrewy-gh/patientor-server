@@ -10,11 +10,16 @@ export type EntryType = "HealthCheck" | "Hospital" | "OccupationalHealthcare";
 
 export type Gender = "female" | "male" | "other";
 
-export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
-  ? ColumnType<S, I | undefined, U>
-  : ColumnType<T, T | undefined, T>;
+export type Generated<T> =
+  T extends ColumnType<infer S, infer I, infer U>
+    ? ColumnType<S, I | undefined, U>
+    : ColumnType<T, T | undefined, T>;
 
-export type HealthCheckRating = "CriticalRisk" | "Healthy" | "HighRisk" | "LowRisk";
+export type HealthCheckRating =
+  | "CriticalRisk"
+  | "Healthy"
+  | "HighRisk"
+  | "LowRisk";
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 

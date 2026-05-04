@@ -1,13 +1,8 @@
-import { Patients } from "./db/generated.js";
+import { Patients } from "../db/generated.js";
+import type { Diagnosis } from "../diagnoses/types.js";
 
-export interface Diagnosis {
-  code: string;
-  name: string;
-  latin?: string;
-}
-export type { Gender } from "./db/generated.js";
+export type { Gender } from "../db/generated.js";
 
-// ? Entry types
 interface BaseEntry {
   id: string;
   description: string;
@@ -23,7 +18,6 @@ export enum HealthCheckRating {
   "CriticalRisk" = 3,
 }
 
-// Hospital entry: property
 interface Discharge {
   date: string;
   criteria: string;
@@ -34,7 +28,6 @@ interface HospitalEntry extends BaseEntry {
   discharge: Discharge;
 }
 
-// Occupational Healthcare entry: optional property
 interface SickLeave {
   startDate: string;
   endDate: string;

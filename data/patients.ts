@@ -1,4 +1,4 @@
-import { Patient } from "../src/types.js";
+import type { Patient } from "../src/patients/types.js";
 
 const patients: Patient[] = [
   {

@@ -1,13 +1,13 @@
+import { Data, Effect } from "effect";
 import { Selectable } from "kysely";
+import { v1 as uuid } from "uuid";
 import { Database } from "../db/database.js";
 import {
   Entries,
   Gender,
   HealthCheckRating as DbHealthCheckRating,
 } from "../db/generated.js";
-import { Entry, HealthCheckRating, NewPatientInput } from "../types.js";
-import { v1 as uuid } from "uuid";
-import { Data, Effect } from "effect";
+import { Entry, HealthCheckRating, NewPatientInput } from "./types.js";
 
 type EntryRow = Selectable<Entries>;
 

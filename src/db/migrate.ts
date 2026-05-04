@@ -1,8 +1,13 @@
-import { sql } from 'kysely';
-import { db } from "./database.js";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { ConfigProvider, Effect, Layer } from "effect";
+import { Kysely, sql } from "kysely";
+import { AppLive } from "../layers.js";
+import { Database } from "./database.js";
+import { DB } from "./generated.js";
 
-const migrate = async () => {
-  await sql`
+const createEnumTypes = (db: Kysely<DB>) =>
+  Effect.promise(async () => {
+    await sql`
     DO $$
     BEGIN
       CREATE TYPE gender AS ENUM ('male', 'female', 'other');
@@ -11,7 +16,7 @@ const migrate = async () => {
     END $$;
   `.execute(db);
 
-  await sql`
+    await sql`
     DO $$
     BEGIN
       CREATE TYPE entry_type AS ENUM (
@@ -24,7 +29,7 @@ const migrate = async () => {
     END $$;
   `.execute(db);
 
-  await sql`
+    await sql`
     DO $$
     BEGIN
       CREATE TYPE health_check_rating AS ENUM (
@@ -37,8 +42,11 @@ const migrate = async () => {
       WHEN duplicate_object THEN NULL;
     END $$;
   `.execute(db);
+  });
 
-  await db.schema
+const createTables = (db: Kysely<DB>) =>
+  Effect.promise(async () => {
+    await db.schema
     .createTable('diagnoses')
     .ifNotExists()
     .addColumn('code', 'varchar(16)', (column) => column.primaryKey())
@@ -46,7 +54,7 @@ const migrate = async () => {
     .addColumn('latin', 'text')
     .execute();
 
-  await db.schema
+    await db.schema
     .createTable('patients')
     .ifNotExists()
     .addColumn('id', 'uuid', (column) => column.primaryKey())
@@ -60,7 +68,7 @@ const migrate = async () => {
     )
     .execute();
 
-  await db.schema
+    await db.schema
     .createTable('entries')
     .ifNotExists()
     .addColumn('row_id', 'serial', (column) => column.primaryKey())
@@ -78,15 +86,23 @@ const migrate = async () => {
     .addColumn('employer_name', 'text')
     .addColumn('sick_leave', 'jsonb')
     .execute();
-};
-
-migrate()
-  .then(async () => {
-    console.log('Database migrated');
-    await db.destroy();
-  })
-  .catch(async (error: unknown) => {
-    console.error(error);
-    await db.destroy();
-    process.exit(1);
   });
+
+const migrate = Effect.gen(function* () {
+  const db = yield* Database;
+
+  yield* createEnumTypes(db);
+  yield* createTables(db);
+  yield* Effect.log("Database migrated");
+});
+
+const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), {
+  asPrimary: true,
+});
+
+const MainLive = AppLive.pipe(
+  Layer.provide(DotEnvLive),
+  Layer.provide(NodeServices.layer),
+);
+
+migrate.pipe(Effect.provide(MainLive), NodeRuntime.runMain);

@@ -20,6 +20,9 @@ Topics: quick-start, project-setup, tsconfig, basics, services-and-layers, data-
 
 Never guess at Effect patterns - check the installed v4 package docs/types first.
 
+`effect-solutions` is not available as a PATH command in this repo. Treat it as
+a shared local source checkout and read files from the checkout directly.
+
 On this Windows machine, the shared Effect source checkout is available at:
 
 `C:\Users\lenny\.local\share\effect-solutions\effect`

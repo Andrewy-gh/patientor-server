@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-import { Context, Effect, Layer } from "effect";
+import { Config, Context, Effect, Layer } from "effect";
 
 export interface AppConfig {
   readonly port: number;
@@ -12,37 +11,14 @@ export class AppConfigService extends Context.Service<
   AppConfig
 >()("AppConfig") {}
 
-const parsePort = (port: string | undefined) => {
-  if (!port) {
-    return 3001;
-  }
-
-  const parsedPort = Number(port);
-  if (!Number.isInteger(parsedPort) || parsedPort <= 0) {
-    throw new Error("PORT must be a positive integer");
-  }
-
-  return parsedPort;
-};
-
-const requireEnv = (name: string) => {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} is required`);
-  }
-
-  return value;
-};
-
-const makeConfig = Effect.sync(() => {
-  dotenv.config();
-
-  return {
-    port: parsePort(process.env.PORT),
-    databaseUrl: requireEnv("DATABASE_URL"),
-    nodeEnv: process.env.NODE_ENV ?? "development",
-  };
+const appConfig = Config.all({
+  port: Config.number("PORT").pipe(Config.withDefault(3001)),
+  databaseUrl: Config.string("DATABASE_URL"),
+  nodeEnv: Config.string("NODE_ENV").pipe(Config.withDefault("development")),
 });
 
-export const AppConfigLive = Layer.effect(AppConfigService, makeConfig);
-export const config = Effect.runSync(makeConfig);
+const makeConfig = Effect.gen(function* () {
+  return yield* appConfig;
+});
+
+export const AppConfigLive = Layer.effect(AppConfigService)(makeConfig);

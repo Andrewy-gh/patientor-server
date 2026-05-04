@@ -5,23 +5,38 @@ import toNewPatient from '../utils';
 const router = express.Router();
 
 router.get('/', (_req, res) => {
-  res.send(patientService.getNonSensitivePatients());
+  void (async () => {
+  try {
+    const patients = await patientService.getNonSensitivePatients();
+    res.send(patients);
+  } catch (error: unknown) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+  })();
 });
 
 router.get('/:id', (req, res) => {
-  // check id type guard
-  const patient = patientService.getNonSensitivePatient(req.params.id);
-  if (patient) {
-    res.send(patient);
-  } else {
-    res.sendStatus(404);
+  void (async () => {
+  try {
+    const patient = await patientService.getNonSensitivePatient(req.params.id);
+    if (patient) {
+      res.send(patient);
+    } else {
+      res.sendStatus(404);
+    }
+  } catch (error: unknown) {
+    console.error(error);
+    res.sendStatus(500);
   }
+  })();
 });
 
 router.post('/', (req, res) => {
+  void (async () => {
   try {
     const newPatient = toNewPatient(req.body);
-    const addedPatient = patientService.addNewPatient(newPatient);
+    const addedPatient = await patientService.addNewPatient(newPatient);
     res.json(addedPatient);
   } catch (error: unknown) {
     let errorMessage = 'Something went wrong.';
@@ -30,5 +45,6 @@ router.post('/', (req, res) => {
     }
     res.status(400).send(errorMessage);
   }
+  })();
 });
 export default router;

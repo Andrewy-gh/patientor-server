@@ -1,18 +1,18 @@
-import express from 'express';
+import express from "express";
 const app = express();
-import diagnosisRouter from './routes/diagnoses';
-import patientRouter from './routes/patients';
+import diagnosisRouter from "./routes/diagnoses";
+import patientRouter from "./routes/patients";
+import { config } from './config';
+
 app.use(express.json());
 
-const PORT = 3001;
-
-app.get('/api/ping', (_req, res) => {
-  res.status(200).send('pong');
+app.get("/api/ping", (_req, res) => {
+  res.status(200).send("pong");
 });
 
-app.use('/api/diagnoses', diagnosisRouter);
-app.use('/api/patients', patientRouter);
+app.use("/api/diagnoses", diagnosisRouter);
+app.use("/api/patients", patientRouter);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(config.port, () => {
+  console.log(`Server running on port ${config.port}`);
 });

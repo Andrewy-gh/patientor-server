@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: patientor-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: patientor
+      POSTGRES_PASSWORD: patientor
+      POSTGRES_DB: patientor
+    volumes:
+      - patientor-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U patientor -d patientor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  patientor-postgres-data:

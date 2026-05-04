@@ -10,7 +10,17 @@ This is the server side code for the Patientor Typescript app. This app allows u
 
 1. Fork the repository
 
-2. In the project root directory. Enter these commands:
+2. In the project root directory, install dependencies:
    `npm install`
 
-3. Run the server in developement mode: `npm run dev`
+3. Copy `.env.example` to `.env`
+
+4. Start Postgres:
+   `docker compose up -d`
+
+5. Create and seed the database:
+   `npm run db:migrate`
+   `npm run db:seed`
+
+6. Run the server in development mode:
+   `npm run dev`

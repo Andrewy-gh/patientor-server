@@ -1,5 +1,7 @@
 import { Gender, NewPatient } from './types';
 
+const genders: readonly Gender[] = ['male', 'female', 'other'];
+
 const isString = (text: unknown): text is string => {
   return typeof text === 'string' || text instanceof String;
 };
@@ -35,9 +37,7 @@ const parseSSN = (ssn: unknown): string => {
 };
 
 const isGender = (gender: string): boolean => {
-  return Object.values(Gender)
-    .map((g) => g.toString())
-    .includes(gender);
+  return genders.includes(gender as Gender);
 };
 
 const parseGender = (gender: unknown): string => {

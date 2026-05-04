@@ -1,0 +1,15 @@
+{
+  "customImports": {
+    "EntryDischarge": "./entryTypes",
+    "EntrySickLeave": "./entryTypes"
+  },
+  "dateParser": "string",
+  "envFile": ".env",
+  "outFile": "src/db/generated.ts",
+  "overrides": {
+    "columns": {
+      "entries.discharge": "EntryDischarge | null",
+      "entries.sick_leave": "EntrySickLeave | null"
+    }
+  }
+}

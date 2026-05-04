@@ -144,6 +144,23 @@ const makeDatabase = Effect.gen(function* () {
 export const DatabaseLive = Layer.effect(Database)(makeDatabase);
 ```
 
+Notation reminder for the service declaration:
+
+```ts
+export class Database extends Context.Service<Database, Kysely<DB>>()(
+  "Database",
+) {}
+```
+
+The class name `Database` is the service key imported by application code. The
+first generic, also `Database`, is the Effect identifier type for that key. The
+second generic, `Kysely<DB>`, is the value type returned when code asks for the
+service with `yield* Database`.
+
+So `yield* Database` gives a `Kysely<DB>` client, not an instance of the empty
+`Database` class. The string `"Database"` is the runtime key name and should
+usually match the class name for readability.
+
 If you want Effect to own shutdown, model the database as an acquired resource:
 
 ```ts

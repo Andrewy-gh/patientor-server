@@ -1,18 +1,16 @@
-import express from "express";
-const app = express();
-import diagnosisRouter from "./routes/diagnoses.js";
-import patientRouter from "./routes/patients.js";
-import { config } from "./config.js";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { ConfigProvider, Layer } from "effect";
+import { AppLive } from "./layers.js";
+import { HttpServerLive } from "./http/server.js";
 
-app.use(express.json());
-
-app.get("/api/ping", (_req, res) => {
-  res.status(200).send("pong");
+const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), {
+  asPrimary: true,
 });
 
-app.use("/api/diagnoses", diagnosisRouter);
-app.use("/api/patients", patientRouter);
+const MainLive = HttpServerLive.pipe(
+  Layer.provide(AppLive),
+  Layer.provide(DotEnvLive),
+  Layer.provide(NodeServices.layer),
+);
 
-app.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
-});
+Layer.launch(MainLive).pipe(NodeRuntime.runMain);

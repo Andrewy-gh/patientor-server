@@ -1,8 +1,8 @@
 import express from "express";
 const app = express();
-import diagnosisRouter from "./routes/diagnoses";
-import patientRouter from "./routes/patients";
-import { config } from './config';
+import diagnosisRouter from "./routes/diagnoses.js";
+import patientRouter from "./routes/patients.js";
+import { config } from "./config.js";
 
 app.use(express.json());
 

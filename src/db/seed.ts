@@ -1,9 +1,9 @@
 import { sql } from 'kysely';
-import { diagnoses } from '../../data/diagnoses';
-import patients from '../../data/patients';
-import { db } from './database';
-import { Gender, HealthCheckRating } from './generated';
-import { HealthCheckRating as ApiHealthCheckRating } from '../types';
+import { diagnoses } from "../../data/diagnoses.js";
+import patients from "../../data/patients.js";
+import { db } from "./database.js";
+import { Gender, HealthCheckRating } from "./generated.js";
+import { HealthCheckRating as ApiHealthCheckRating } from "../types.js";
 
 const healthCheckRatings: Record<ApiHealthCheckRating, HealthCheckRating> = {
   [ApiHealthCheckRating.Healthy]: 'Healthy',

@@ -3,7 +3,7 @@
  * Please do not edit it manually.
  */
 
-import type { EntryDischarge, EntrySickLeave } from "./entryTypes";
+import type { EntryDischarge, EntrySickLeave } from "./entryTypes.js";
 import type { ColumnType } from "kysely";
 
 export type EntryType = "HealthCheck" | "Hospital" | "OccupationalHealthcare";

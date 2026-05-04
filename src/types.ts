@@ -3,7 +3,7 @@ export interface Diagnosis {
   name: string;
   latin?: string;
 }
-export type { Gender } from './db/generated';
+export type { Gender } from './db/generated.js';
 
 // ? Entry types
 interface BaseEntry {

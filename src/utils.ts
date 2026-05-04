@@ -1,4 +1,4 @@
-import { Gender, NewPatient } from './types';
+import { Gender, NewPatient } from './types.js';
 
 const genders: readonly Gender[] = ['male', 'female', 'other'];
 

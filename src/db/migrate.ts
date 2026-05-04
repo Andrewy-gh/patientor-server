@@ -1,5 +1,5 @@
 import { sql } from 'kysely';
-import { db } from './database';
+import { db } from "./database.js";
 
 const migrate = async () => {
   await sql`

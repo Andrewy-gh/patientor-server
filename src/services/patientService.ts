@@ -1,11 +1,11 @@
 import { Selectable } from "kysely";
-import { db } from "../db/database";
-import { Entries, Gender, HealthCheckRating as DbHealthCheckRating } from "../db/generated";
+import { db } from "../db/database.js";
+import { Entries, Gender, HealthCheckRating as DbHealthCheckRating } from "../db/generated.js";
 import {
   Entry,
   HealthCheckRating,
   NewPatient,
-} from "../types";
+} from "../types.js";
 import { v1 as uuid } from "uuid";
 
 type EntryRow = Selectable<Entries>;

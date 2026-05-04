@@ -1,4 +1,4 @@
-import { db } from '../db/database';
+import { db } from "../db/database.js";
 
 const getDiagnoses = async () => {
   const diagnoses = await db

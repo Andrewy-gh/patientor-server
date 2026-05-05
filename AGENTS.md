@@ -30,4 +30,10 @@ On this Windows machine, the shared Effect source checkout is available at:
 That checkout currently tracks Effect v4 beta docs and migration guidance. Use
 the installed `node_modules/effect` package to confirm exact API shape for this
 repo's pinned beta.
+
+Before substantial Effect work, update the shared checkout with:
+
+`git -C "$HOME\.local\share\effect-solutions\effect" pull --ff-only`
+
+Then verify exact APIs against `node_modules/effect`.
 <!-- effect-solutions:end -->

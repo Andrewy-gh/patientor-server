@@ -43,78 +43,78 @@ export const getNonSensitivePatients = Effect.gen(function* () {
   }));
 });
 
-export const getNonSensitivePatient = (id: string) =>
-  Effect.gen(function* () {
-    const db = yield* Database;
+export const getNonSensitivePatient = Effect.fnUntraced(function* (id: string) {
+  const db = yield* Database;
 
-    const patient = yield* Effect.tryPromise({
-      try: () =>
-        db
-          .selectFrom("patients")
-          .select(["id", "name", "date_of_birth", "gender", "occupation"])
-          .where("id", "=", id)
-          .executeTakeFirst(),
-      catch: (e) => new PatientReadError({ cause: e }),
-    });
-
-    if (!patient) {
-      return undefined;
-    }
-
-    const entries = yield* Effect.tryPromise({
-      try: () =>
-        db
-          .selectFrom("entries")
-          .selectAll()
-          .where("patient_id", "=", id)
-          .orderBy("date")
-          .execute(),
-      catch: (e) => new PatientReadError({ cause: e }),
-    });
-
-    const mappedEntries = yield* Effect.try({
-      try: () => entries.map(toEntry),
-      catch: (e) => new PatientReadError({ cause: e }),
-    });
-
-    return {
-      id: patient.id,
-      name: patient.name,
-      dateOfBirth: patient.date_of_birth,
-      gender: patient.gender,
-      occupation: patient.occupation,
-      entries: mappedEntries,
-    };
+  const patient = yield* Effect.tryPromise({
+    try: () =>
+      db
+        .selectFrom("patients")
+        .select(["id", "name", "date_of_birth", "gender", "occupation"])
+        .where("id", "=", id)
+        .executeTakeFirst(),
+    catch: (e) => new PatientReadError({ cause: e }),
   });
 
-export const addNewPatient = (patient: NewPatientInput) =>
-  Effect.gen(function* () {
-    const newPatient = {
-      id: uuid(),
-      ...patient,
-      entries: [],
-    };
-    const db = yield* Database;
+  if (!patient) {
+    return undefined;
+  }
 
-    return yield* Effect.tryPromise({
-      try: async () => {
-        await db
-          .insertInto("patients")
-          .values({
-            id: newPatient.id,
-            name: newPatient.name,
-            date_of_birth: newPatient.dateOfBirth,
-            ssn: newPatient.ssn,
-            gender: newPatient.gender as Gender,
-            occupation: newPatient.occupation,
-          })
-          .execute();
-
-        return newPatient;
-      },
-      catch: (e) => new PatientReadError({ cause: e }),
-    });
+  const entries = yield* Effect.tryPromise({
+    try: () =>
+      db
+        .selectFrom("entries")
+        .selectAll()
+        .where("patient_id", "=", id)
+        .orderBy("date")
+        .execute(),
+    catch: (e) => new PatientReadError({ cause: e }),
   });
+
+  const mappedEntries = yield* Effect.try({
+    try: () => entries.map(toEntry),
+    catch: (e) => new PatientReadError({ cause: e }),
+  });
+
+  return {
+    id: patient.id,
+    name: patient.name,
+    dateOfBirth: patient.date_of_birth,
+    gender: patient.gender,
+    occupation: patient.occupation,
+    entries: mappedEntries,
+  };
+});
+
+export const addNewPatient = Effect.fnUntraced(function* (
+  patient: NewPatientInput,
+) {
+  const newPatient = {
+    id: uuid(),
+    ...patient,
+    entries: [],
+  };
+  const db = yield* Database;
+
+  return yield* Effect.tryPromise({
+    try: async () => {
+      await db
+        .insertInto("patients")
+        .values({
+          id: newPatient.id,
+          name: newPatient.name,
+          date_of_birth: newPatient.dateOfBirth,
+          ssn: newPatient.ssn,
+          gender: newPatient.gender as Gender,
+          occupation: newPatient.occupation,
+        })
+        .execute();
+
+      return newPatient;
+    },
+    catch: (e) => new PatientReadError({ cause: e }),
+  });
+});
 
 const toEntry = (entry: EntryRow): Entry => {
   const baseEntry = {

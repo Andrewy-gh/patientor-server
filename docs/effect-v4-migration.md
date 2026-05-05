@@ -227,6 +227,13 @@ Use the acquired version once the server is launched with `Layer.launch`; then E
 
 Migrated services should return Effects. That makes dependencies visible in the type and lets tests provide fake layers.
 
+Use `Effect.gen` directly for effect values, such as a startup program or a
+route body. When exporting a reusable function that returns an Effect, prefer
+`Effect.fnUntraced(function* (...) { ... })` over an arrow function that returns
+`Effect.gen(...)`. This follows the local Effect source checkout guidance and
+keeps the generator body readable while making the export itself the
+Effect-returning function.
+
 ```ts
 // src/services/diagnosisService.ts
 import { Data, Effect } from "effect";
@@ -254,6 +261,29 @@ export const getDiagnoses = Effect.gen(function* () {
     name: diagnosis.name,
     ...(diagnosis.latin ? { latin: diagnosis.latin } : {}),
   }));
+});
+```
+
+For a service function with parameters, use `Effect.fnUntraced`:
+
+```ts
+export const getPatient = Effect.fnUntraced(function* (id: string) {
+  const db = yield* Database;
+  const patient = yield* Effect.tryPromise({
+    try: () =>
+      db
+        .selectFrom("patients")
+        .select(["id", "name"])
+        .where("id", "=", id)
+        .executeTakeFirst(),
+    catch: (cause) => new PatientReadError({ cause }),
+  });
+
+  if (!patient) {
+    return undefined;
+  }
+
+  return patient;
 });
 ```
 

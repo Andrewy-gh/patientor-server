@@ -25,6 +25,12 @@ That is good for a first pass. Prefer `Effect.logError` over `Console.error` as 
 ## Route template
 
 ```ts
+import { HttpServerError } from "effect/unstable/http";
+
+const isRequestParseError = (error: unknown) =>
+  HttpServerError.isHttpServerError(error) &&
+  error.reason._tag === "RequestParseError";
+
 const route = HttpRouter.route(
   "POST",
   "/api/patients",
@@ -34,6 +40,9 @@ const route = HttpRouter.route(
     return yield* HttpServerResponse.json(added, { status: 201 });
   }).pipe(
     Effect.catchIf(Schema.isSchemaError, () =>
+      Effect.succeed(HttpServerResponse.empty({ status: 400 })),
+    ),
+    Effect.catchIf(isRequestParseError, () =>
       Effect.succeed(HttpServerResponse.empty({ status: 400 })),
     ),
     Effect.catchTag("PatientWriteError", (error) =>

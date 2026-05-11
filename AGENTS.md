@@ -1,5 +1,20 @@
 Andy owns this.
 
+## Repo-local guidance
+
+Before making substantial Effect changes, read the Patientor-specific guidance in `.best-practices/`:
+
+1. `.best-practices/README.md`
+2. `.best-practices/01-architecture-slices.md`
+3. `.best-practices/02-config-and-layers.md`
+4. `.best-practices/03-database-and-kysely.md`
+5. `.best-practices/04-domain-errors.md`
+6. `.best-practices/05-schema-validation.md`
+7. `.best-practices/06-http-routes.md`
+8. `.best-practices/07-testing.md`
+
+Those files are the preferred local playbook for this app. They are intentionally Patientor-specific and should win over generic Effect examples unless the installed package types prove otherwise.
+
 <!-- effect-solutions:start -->
 ## Effect Best Practices
 
@@ -10,30 +25,20 @@ dependency is the source of truth for version-specific API shapes:
 Before writing Effect code:
 
 1. Check `package.json` / `package-lock.json` for the repo's pinned Effect version.
-2. Use `node_modules/effect` for installed v4 examples and type signatures, and
-   the shared checkout's `MIGRATION.md` / `migration/` guides for migration
-   context.
-3. Prefer existing repo code patterns over external examples when the local code
-   already has a clear v4 pattern.
+2. Use `node_modules/effect` for installed v4 examples and type signatures.
+3. Prefer existing repo code patterns and `.best-practices/` over external examples when the local code already has a clear v4 pattern.
 
 Topics: quick-start, project-setup, tsconfig, basics, services-and-layers, data-modeling, error-handling, config, testing, cli.
 
 Never guess at Effect patterns - check the installed v4 package docs/types first.
 
-`effect-solutions` is not available as a PATH command in this repo. Treat it as
-a shared local source checkout and read files from the checkout directly.
+## Platform note
 
-On this Windows machine, the shared Effect source checkout is available at:
+Some older generated guidance below referenced a Windows-only shared checkout path such as:
 
 `C:\Users\lenny\.local\share\effect-solutions\effect`
 
-That checkout currently tracks Effect v4 beta docs and migration guidance. Use
-the installed `node_modules/effect` package to confirm exact API shape for this
-repo's pinned beta.
+Do **not** assume that path exists. The current development environment may be Linux, and the reliable source of truth in this repo is the installed package under `node_modules/effect` plus the Patientor-specific `.best-practices/` files.
 
-Before substantial Effect work, update the shared checkout with:
-
-`git -C "$HOME\.local\share\effect-solutions\effect" pull --ff-only`
-
-Then verify exact APIs against `node_modules/effect`.
+If a Windows checkout exists on another machine, treat it as optional background context only. Always verify exact APIs against this repo's installed `node_modules` before editing code.
 <!-- effect-solutions:end -->

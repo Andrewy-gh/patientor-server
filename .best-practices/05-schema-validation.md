@@ -28,6 +28,19 @@ Effect.catchIf(Schema.isSchemaError, () =>
 )
 ```
 
+For JSON body parsing, distinguish malformed request bodies from schema failures even though both return `400`:
+
+```ts
+import { HttpServerError } from "effect/unstable/http";
+
+const isRequestParseError = (error: unknown) =>
+  HttpServerError.isHttpServerError(error) &&
+  error.reason._tag === "RequestParseError";
+```
+
+- `Schema.SchemaError`: valid JSON, but not valid Patientor input
+- `RequestParseError`: malformed or unreadable JSON body
+
 ## Patient creation body
 
 Current body schema:

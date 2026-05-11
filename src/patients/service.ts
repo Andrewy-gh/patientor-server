@@ -38,6 +38,11 @@ export class PatientWriteError extends Data.TaggedClass("PatientWriteError")<{
   readonly cause: unknown;
 }> {}
 
+export class InvalidPatientEntry extends Data.TaggedClass("InvalidPatientEntry")<{
+  readonly entryId: string;
+  readonly reason: string;
+}> {}
+
 export const getNonSensitivePatients = Effect.gen(function* () {
   const db = yield* Database;
 
@@ -87,10 +92,7 @@ export const getNonSensitivePatient = Effect.fnUntraced(function* (id: string) {
     catch: (e) => new PatientReadError({ cause: e }),
   });
 
-  const mappedEntries = yield* Effect.try({
-    try: () => entries.map(toEntry),
-    catch: (e) => new PatientReadError({ cause: e }),
-  });
+  const mappedEntries = yield* Effect.all(entries.map(toEntry));
 
   return {
     id: patient.id,
@@ -128,7 +130,7 @@ export const addNewPatient = Effect.fnUntraced(function* (
 
       return newPatient;
     },
-    catch: (e) => new PatientReadError({ cause: e }),
+    catch: (e) => new PatientWriteError({ cause: e }),
   });
 });
 
@@ -196,10 +198,7 @@ export const addPatientEntry = Effect.fnUntraced(function* (
     return undefined;
   }
 
-  const mappedEntries = yield* Effect.try({
-    try: () => result.entries.map(toEntry),
-    catch: (e) => new PatientReadError({ cause: e }),
-  });
+  const mappedEntries = yield* Effect.all(result.entries.map(toEntry));
 
   return {
     id: result.patient.id,
@@ -211,7 +210,7 @@ export const addPatientEntry = Effect.fnUntraced(function* (
   };
 });
 
-const toEntry = (entry: EntryRow): Entry => {
+const toEntry = (entry: EntryRow): Effect.Effect<Entry, InvalidPatientEntry> => {
   const baseEntry = {
     id: entry.id,
     date: entry.date,
@@ -222,37 +221,50 @@ const toEntry = (entry: EntryRow): Entry => {
 
   switch (entry.type) {
     case "HealthCheck":
-      return {
+      return Effect.succeed({
         ...baseEntry,
         type: "HealthCheck",
         healthCheckRating: entry.health_check_rating
           ? healthCheckRatings[entry.health_check_rating]
           : HealthCheckRating.Healthy,
-      };
+      } satisfies Entry);
     case "Hospital":
       if (!entry.discharge) {
-        throw new Error(`Hospital entry ${entry.id} is missing discharge data`);
-      }
-
-      return {
-        ...baseEntry,
-        type: "Hospital",
-        discharge: entry.discharge,
-      };
-    case "OccupationalHealthcare":
-      if (!entry.employer_name) {
-        throw new Error(
-          `OccupationalHealthcare entry ${entry.id} is missing employer name`,
+        return Effect.fail(
+          new InvalidPatientEntry({
+            entryId: entry.id,
+            reason: "Hospital entry is missing discharge data",
+          }),
         );
       }
 
-      return {
+      return Effect.succeed({
+        ...baseEntry,
+        type: "Hospital",
+        discharge: entry.discharge,
+      } satisfies Entry);
+    case "OccupationalHealthcare":
+      if (!entry.employer_name) {
+        return Effect.fail(
+          new InvalidPatientEntry({
+            entryId: entry.id,
+            reason: "Occupational healthcare entry is missing employer name",
+          }),
+        );
+      }
+
+      return Effect.succeed({
         ...baseEntry,
         type: "OccupationalHealthcare",
         employerName: entry.employer_name,
         ...(entry.sick_leave ? { sickLeave: entry.sick_leave } : {}),
-      };
+      } satisfies Entry);
     default:
-      throw new Error(`Unknown entry type: ${entry.type}`);
+      return Effect.fail(
+        new InvalidPatientEntry({
+          entryId: entry.id,
+          reason: `Unknown entry type: ${entry.type}`,
+        }),
+      );
   }
 };

@@ -8,90 +8,52 @@ import {
 } from "effect/unstable/http";
 import { Database } from "../src/db/database.js";
 import { HttpRoutes } from "../src/http/routes.js";
+import { PatientRepository } from "../src/patients/repository.js";
+import { Entry, NewEntryInput, NonSensitivePatient } from "../src/patients/types.js";
 
 const patientId = "11111111-1111-4111-8111-111111111111";
 const missingPatientId = "22222222-2222-4222-8222-222222222222";
 
-type PatientRow = {
-  id: string;
-  name: string;
-  date_of_birth: string;
-  gender: "male" | "female" | "other";
-  occupation: string;
-};
-
-type EntryRow = {
-  id: string;
-  patient_id: string;
-  date: string;
-  type: "HealthCheck" | "Hospital" | "OccupationalHealthcare";
-  specialist: string;
-  description: string;
-  diagnosis_codes: string[] | null;
-  health_check_rating: "Healthy" | "LowRisk" | "HighRisk" | "CriticalRisk" | null;
-  discharge: { date: string; criteria: string } | null;
-  employer_name: string | null;
-  sick_leave: { startDate: string; endDate: string } | null;
-};
-
-const patient: PatientRow = {
+const patient: NonSensitivePatient = {
   id: patientId,
   name: "Test Patient",
-  date_of_birth: "1990-01-01",
+  dateOfBirth: "1990-01-01",
   gender: "other",
   occupation: "Tester",
 };
 
-const makeDb = (patients: PatientRow[] = [patient]) => {
-  const entries: EntryRow[] = [];
+const makePatientRepository = (patients: NonSensitivePatient[] = [patient]) => {
+  const entries: Entry[] = [];
 
-  const db = {
-    transaction: () => ({
-      execute: async <A>(callback: (trx: typeof db) => Promise<A>) => callback(db),
-    }),
-    selectFrom: (table: "patients" | "entries") => ({
-      select: () => ({
-        where: (_column: string, _operator: string, id: string) => ({
-          executeTakeFirst: () =>
-            Promise.resolve(
-              table === "patients"
-                ? patients.find((candidate) => candidate.id === id)
-                : undefined,
-            ),
-        }),
+  return {
+    addEntry: (id: string, entry: NewEntryInput) =>
+      Effect.sync(() => {
+        const foundPatient = patients.find((candidate) => candidate.id === id);
+
+        if (!foundPatient) {
+          return undefined;
+        }
+
+        const newEntry = {
+          id: `entry-${entries.length + 1}`,
+          ...entry,
+        } as Entry;
+
+        entries.push(newEntry);
+
+        return {
+          ...foundPatient,
+          entries: [...entries],
+        };
       }),
-      selectAll: () => ({
-        where: (_column: string, _operator: string, id: string) => ({
-          orderBy: () => ({
-            execute: () =>
-              Promise.resolve(
-                table === "entries"
-                  ? entries.filter((entry) => entry.patient_id === id)
-                  : [],
-              ),
-          }),
-        }),
-      }),
-    }),
-    insertInto: (table: "entries") => ({
-      values: (entry: EntryRow) => ({
-        execute: () => {
-          if (table === "entries") {
-            entries.push(entry);
-          }
-          return Promise.resolve();
-        },
-      }),
-    }),
   };
-
-  return db;
 };
 
-const withServer = (db: ReturnType<typeof makeDb>) =>
+const withServer = (repository: ReturnType<typeof makePatientRepository>) =>
   HttpRouter.serve(HttpRoutes).pipe(
     Layer.provideMerge(NodeHttpServer.layerTest),
-    Layer.provide(Layer.succeed(Database)(db as never)),
+    Layer.provide(Layer.succeed(PatientRepository)(repository)),
+    Layer.provide(Layer.succeed(Database)({} as never)),
   );
 
 const encoder = new TextEncoder();
@@ -121,7 +83,7 @@ describe("POST /api/patients/:id/entries", () => {
         date: "2026-05-11",
         specialist: "Dr Test",
         healthCheckRating: 0,
-      }).pipe(Effect.provide(withServer(makeDb())));
+      }).pipe(Effect.provide(withServer(makePatientRepository())));
 
       assert.strictEqual(response.status, 400);
     }),
@@ -130,7 +92,7 @@ describe("POST /api/patients/:id/entries", () => {
   it.effect("returns 400 for malformed JSON", () =>
     Effect.gen(function* () {
       const response = yield* postMalformedEntry(patientId).pipe(
-        Effect.provide(withServer(makeDb())),
+        Effect.provide(withServer(makePatientRepository())),
       );
 
       assert.strictEqual(response.status, 400);
@@ -145,7 +107,7 @@ describe("POST /api/patients/:id/entries", () => {
         date: "2026-05-11",
         specialist: "Dr Test",
         healthCheckRating: 9,
-      }).pipe(Effect.provide(withServer(makeDb())));
+      }).pipe(Effect.provide(withServer(makePatientRepository())));
 
       assert.strictEqual(response.status, 400);
     }),
@@ -159,7 +121,7 @@ describe("POST /api/patients/:id/entries", () => {
         date: "2026-99-99",
         specialist: "Dr Ward",
         discharge: { date: "2026-05-12", criteria: "Recovered" },
-      }).pipe(Effect.provide(withServer(makeDb())));
+      }).pipe(Effect.provide(withServer(makePatientRepository())));
 
       assert.strictEqual(response.status, 400);
     }),
@@ -173,7 +135,7 @@ describe("POST /api/patients/:id/entries", () => {
         date: "2026-05-11",
         specialist: "Dr Test",
         healthCheckRating: 0,
-      }).pipe(Effect.provide(withServer(makeDb())));
+      }).pipe(Effect.provide(withServer(makePatientRepository())));
 
       assert.strictEqual(response.status, 404);
     }),
@@ -187,7 +149,7 @@ describe("POST /api/patients/:id/entries", () => {
         date: "2026-05-11",
         specialist: "Dr Test",
         healthCheckRating: 1,
-      }).pipe(Effect.provide(withServer(makeDb())));
+      }).pipe(Effect.provide(withServer(makePatientRepository())));
       const body = (yield* response.json) as Record<string, unknown> & {
         entries: Array<Record<string, unknown>>;
       };
@@ -213,7 +175,7 @@ describe("POST /api/patients/:id/entries", () => {
         date: "2026-05-11",
         specialist: "Dr Ward",
         discharge,
-      }).pipe(Effect.provide(withServer(makeDb())));
+      }).pipe(Effect.provide(withServer(makePatientRepository())));
       const body = (yield* response.json) as Record<string, unknown> & {
         entries: Array<Record<string, unknown>>;
       };
@@ -242,7 +204,7 @@ describe("POST /api/patients/:id/entries", () => {
           specialist: "Dr Work",
           employerName: "ACME",
           sickLeave,
-        }).pipe(Effect.provide(withServer(makeDb())));
+        }).pipe(Effect.provide(withServer(makePatientRepository())));
         const body = (yield* response.json) as Record<string, unknown> & {
           entries: Array<Record<string, unknown>>;
         };

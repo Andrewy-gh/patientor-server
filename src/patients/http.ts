@@ -1,14 +1,20 @@
 import { Console, Effect, Schema } from "effect";
 import {
   HttpRouter,
+  HttpServerError,
   HttpServerRequest,
   HttpServerResponse,
 } from "effect/unstable/http";
 import {
   addNewPatient,
+  addPatientEntry,
   getNonSensitivePatient,
   getNonSensitivePatients,
 } from "./service.js";
+
+const isRequestParseError = (error: unknown) =>
+  HttpServerError.isHttpServerError(error) &&
+  error.reason._tag === "RequestParseError";
 
 const patientsRoute = HttpRouter.route(
   "GET",
@@ -90,4 +96,90 @@ const addPatientRoute = HttpRouter.route(
   ),
 );
 
-export const PatientHttpRoutes = [patientsRoute, patientRoute, addPatientRoute];
+const DateOnly = Schema.String.check(
+  Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/),
+);
+
+const BaseEntryInput = {
+  description: Schema.String.check(Schema.isMinLength(1)),
+  date: DateOnly,
+  specialist: Schema.String.check(Schema.isMinLength(1)),
+  diagnosisCodes: Schema.optionalKey(Schema.Array(Schema.String)),
+};
+
+const NewEntryInputSchema = Schema.Union([
+  Schema.Struct({
+    ...BaseEntryInput,
+    type: Schema.Literal("HealthCheck"),
+    healthCheckRating: Schema.Union([
+      Schema.Literal(0),
+      Schema.Literal(1),
+      Schema.Literal(2),
+      Schema.Literal(3),
+    ]),
+  }),
+  Schema.Struct({
+    ...BaseEntryInput,
+    type: Schema.Literal("Hospital"),
+    discharge: Schema.Struct({
+      date: DateOnly,
+      criteria: Schema.String.check(Schema.isMinLength(1)),
+    }),
+  }),
+  Schema.Struct({
+    ...BaseEntryInput,
+    type: Schema.Literal("OccupationalHealthcare"),
+    employerName: Schema.String.check(Schema.isMinLength(1)),
+    sickLeave: Schema.optionalKey(
+      Schema.Struct({
+        startDate: DateOnly,
+        endDate: DateOnly,
+      }),
+    ),
+  }),
+]);
+
+const addPatientEntryRoute = HttpRouter.route(
+  "POST",
+  "/api/patients/:id/entries",
+  Effect.gen(function* () {
+    const { id } = yield* HttpRouter.schemaPathParams(PatientPathParams);
+    const newEntry = yield* HttpServerRequest.schemaBodyJson(
+      NewEntryInputSchema,
+    );
+
+    const patient = yield* addPatientEntry(id, newEntry);
+
+    if (!patient) {
+      return HttpServerResponse.empty({ status: 404 });
+    }
+
+    return yield* HttpServerResponse.json(patient, { status: 201 });
+  }).pipe(
+    Effect.catchIf(Schema.isSchemaError, () =>
+      Effect.succeed(HttpServerResponse.empty({ status: 400 })),
+    ),
+    Effect.catchIf(isRequestParseError, () =>
+      Effect.succeed(HttpServerResponse.empty({ status: 400 })),
+    ),
+    Effect.catchTag("PatientWriteError", (error) =>
+      Effect.gen(function* () {
+        yield* Console.error(error);
+        return HttpServerResponse.empty({ status: 500 });
+      }),
+    ),
+    Effect.catchTag("PatientReadError", (error) =>
+      Effect.gen(function* () {
+        yield* Console.error(error);
+        return HttpServerResponse.empty({ status: 500 });
+      }),
+    ),
+  ),
+);
+
+export const PatientHttpRoutes = [
+  patientsRoute,
+  patientRoute,
+  addPatientRoute,
+  addPatientEntryRoute,
+];

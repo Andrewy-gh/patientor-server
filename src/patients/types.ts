@@ -8,7 +8,7 @@ interface BaseEntry {
   description: string;
   date: string;
   specialist: string;
-  diagnosisCodes?: Array<Diagnosis["code"]>;
+  diagnosisCodes?: ReadonlyArray<Diagnosis["code"]>;
 }
 
 export enum HealthCheckRating {
@@ -48,6 +48,12 @@ export type Entry =
   | HospitalEntry
   | OccupationalHealthcareEntry
   | HealthCheckEntry;
+
+export type NewEntryInput = Entry extends infer E
+  ? E extends Entry
+    ? Omit<E, "id">
+    : never
+  : never;
 
 export interface Patient {
   id: string;

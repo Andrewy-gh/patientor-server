@@ -1,4 +1,4 @@
-import { Console, Effect, Schema } from "effect";
+import { Effect, Schema } from "effect";
 import {
   HttpRouter,
   HttpServerError,
@@ -23,7 +23,7 @@ const patientsRoute = HttpRouter.route(
     Effect.flatMap((patients) => HttpServerResponse.json(patients)),
     Effect.catchTag("PatientReadError", (error) =>
       Effect.gen(function* () {
-        yield* Console.error(error);
+        yield* Effect.logError(error);
         return HttpServerResponse.empty({ status: 500 });
       }),
     ),
@@ -53,7 +53,13 @@ const patientRoute = HttpRouter.route(
     ),
     Effect.catchTag("PatientReadError", (error) =>
       Effect.gen(function* () {
-        yield* Console.error(error);
+        yield* Effect.logError(error);
+        return HttpServerResponse.empty({ status: 500 });
+      }),
+    ),
+    Effect.catchTag("InvalidPatientEntry", (error) =>
+      Effect.gen(function* () {
+        yield* Effect.logError(error);
         return HttpServerResponse.empty({ status: 500 });
       }),
     ),
@@ -79,7 +85,7 @@ const DateOnly = Schema.String.check(
 const NewPatientInputSchema = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1)),
   dateOfBirth: DateOnly,
-  ssn: Schema.String.check(Schema.isMinLength(1)),
+  ssn: Schema.String.check(Schema.isPattern(/^\d{6}-[A-Za-z0-9]{3,4}$/)),
   gender: Schema.Union([
     Schema.Literal("female"),
     Schema.Literal("male"),
@@ -103,9 +109,12 @@ const addPatientRoute = HttpRouter.route(
     Effect.catchIf(Schema.isSchemaError, () =>
       Effect.succeed(HttpServerResponse.empty({ status: 400 })),
     ),
-    Effect.catchTag("PatientReadError", (error) =>
+    Effect.catchIf(isRequestParseError, () =>
+      Effect.succeed(HttpServerResponse.empty({ status: 400 })),
+    ),
+    Effect.catchTag("PatientWriteError", (error) =>
       Effect.gen(function* () {
-        yield* Console.error(error);
+        yield* Effect.logError(error);
         return HttpServerResponse.empty({ status: 500 });
       }),
     ),
@@ -174,15 +183,15 @@ const addPatientEntryRoute = HttpRouter.route(
     Effect.catchIf(isRequestParseError, () =>
       Effect.succeed(HttpServerResponse.empty({ status: 400 })),
     ),
-    Effect.catchTag("PatientWriteError", (error) =>
+    Effect.catchTag("InvalidPatientEntry", (error) =>
       Effect.gen(function* () {
-        yield* Console.error(error);
+        yield* Effect.logError(error);
         return HttpServerResponse.empty({ status: 500 });
       }),
     ),
-    Effect.catchTag("PatientReadError", (error) =>
+    Effect.catchTag("PatientWriteError", (error) =>
       Effect.gen(function* () {
-        yield* Console.error(error);
+        yield* Effect.logError(error);
         return HttpServerResponse.empty({ status: 500 });
       }),
     ),

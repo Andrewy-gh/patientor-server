@@ -151,6 +151,20 @@ describe("POST /api/patients/:id/entries", () => {
     }),
   );
 
+  it.effect("returns 400 for impossible dates", () =>
+    Effect.gen(function* () {
+      const response = yield* postEntry(patientId, {
+        type: "Hospital",
+        description: "Admission",
+        date: "2026-99-99",
+        specialist: "Dr Ward",
+        discharge: { date: "2026-05-12", criteria: "Recovered" },
+      }).pipe(Effect.provide(withServer(makeDb())));
+
+      assert.strictEqual(response.status, 400);
+    }),
+  );
+
   it.effect("returns 404 for missing patient", () =>
     Effect.gen(function* () {
       const response = yield* postEntry(missingPatientId, {

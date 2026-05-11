@@ -18,16 +18,16 @@
     "test": "cross-env NODE_ENV=test vitest run"
   },
   "dependencies": {
-    "@effect/platform-node": "^4.0.0-beta.60",
+    "@effect/platform-node": "^4.0.0-beta.65",
     "dotenv": "^17.4.2",
-    "effect": "^4.0.0-beta.60",
+    "effect": "^4.0.0-beta.65",
     "kysely": "^0.28.17",
     "pg": "^8.20.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@effect/language-service": "^0.85.1",
-    "@effect/vitest": "^4.0.0-beta.60",
+    "@effect/vitest": "^4.0.0-beta.65",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
     "@types/uuid": "^9.0.7",

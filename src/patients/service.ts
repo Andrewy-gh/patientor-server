@@ -7,7 +7,12 @@ import {
   Gender,
   HealthCheckRating as DbHealthCheckRating,
 } from "../db/generated.js";
-import { Entry, HealthCheckRating, NewPatientInput } from "./types.js";
+import {
+  Entry,
+  HealthCheckRating,
+  NewEntryInput,
+  NewPatientInput,
+} from "./types.js";
 
 type EntryRow = Selectable<Entries>;
 
@@ -18,7 +23,18 @@ const healthCheckRatings: Record<DbHealthCheckRating, HealthCheckRating> = {
   CriticalRisk: HealthCheckRating.CriticalRisk,
 };
 
+const dbHealthCheckRatings: Record<HealthCheckRating, DbHealthCheckRating> = {
+  [HealthCheckRating.Healthy]: "Healthy",
+  [HealthCheckRating.LowRisk]: "LowRisk",
+  [HealthCheckRating.HighRisk]: "HighRisk",
+  [HealthCheckRating.CriticalRisk]: "CriticalRisk",
+};
+
 export class PatientReadError extends Data.TaggedClass("PatientReadError")<{
+  readonly cause: unknown;
+}> {}
+
+export class PatientWriteError extends Data.TaggedClass("PatientWriteError")<{
   readonly cause: unknown;
 }> {}
 
@@ -114,6 +130,85 @@ export const addNewPatient = Effect.fnUntraced(function* (
     },
     catch: (e) => new PatientReadError({ cause: e }),
   });
+});
+
+export const addPatientEntry = Effect.fnUntraced(function* (
+  patientId: string,
+  entry: NewEntryInput,
+) {
+  const db = yield* Database;
+  const entryId = uuid();
+
+  const result = yield* Effect.tryPromise({
+    try: () =>
+      db.transaction().execute(async (trx) => {
+        const patient = await trx
+          .selectFrom("patients")
+          .select(["id", "name", "date_of_birth", "gender", "occupation"])
+          .where("id", "=", patientId)
+          .executeTakeFirst();
+
+        if (!patient) {
+          return undefined;
+        }
+
+        await trx
+          .insertInto("entries")
+          .values({
+            id: entryId,
+            patient_id: patientId,
+            date: entry.date,
+            type: entry.type,
+            specialist: entry.specialist,
+            description: entry.description,
+            diagnosis_codes: entry.diagnosisCodes
+              ? [...entry.diagnosisCodes]
+              : null,
+            health_check_rating:
+              entry.type === "HealthCheck"
+                ? dbHealthCheckRatings[entry.healthCheckRating]
+                : null,
+            discharge: entry.type === "Hospital" ? entry.discharge : null,
+            employer_name:
+              entry.type === "OccupationalHealthcare"
+                ? entry.employerName
+                : null,
+            sick_leave:
+              entry.type === "OccupationalHealthcare"
+                ? entry.sickLeave ?? null
+                : null,
+          })
+          .execute();
+
+        const entries = await trx
+          .selectFrom("entries")
+          .selectAll()
+          .where("patient_id", "=", patientId)
+          .orderBy("date")
+          .execute();
+
+        return { patient, entries };
+      }),
+    catch: (e) => new PatientWriteError({ cause: e }),
+  });
+
+  if (!result) {
+    return undefined;
+  }
+
+  const mappedEntries = yield* Effect.try({
+    try: () => result.entries.map(toEntry),
+    catch: (e) => new PatientReadError({ cause: e }),
+  });
+
+  return {
+    id: result.patient.id,
+    name: result.patient.name,
+    dateOfBirth: result.patient.date_of_birth,
+    gender: result.patient.gender,
+    occupation: result.patient.occupation,
+    entries: mappedEntries,
+  };
 });
 
 const toEntry = (entry: EntryRow): Entry => {

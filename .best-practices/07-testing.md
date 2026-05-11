@@ -54,6 +54,27 @@ it.effect("returns diagnoses without empty latin fields", () =>
 
 This is better than booting Postgres for every service test. Use real Postgres only for integration tests.
 
+## Avoid faking third-party fluent APIs repeatedly
+
+A fake `Database` layer is fine for small service or route tests, but do not let each test hand-roll a large mock of Kysely's chained API.
+
+Good use of a fake database:
+
+- tiny query surface
+- behavior-focused assertions
+- fast coverage for `400`, `404`, and `500` route behavior
+- backed by at least one real Postgres integration test for persistence
+
+Bad use of a fake database:
+
+- duplicating long `selectFrom().select().where().execute()` chains across many tests
+- asserting implementation trivia like call counts or exact query order
+- treating the fake as proof that SQL/Postgres behavior works
+
+If a fake starts mirroring too much Kysely, introduce an Effect service boundary for the app-owned behavior instead. For example, a `PatientRepository` `Context.Tag` can expose `addEntry`, `findNonSensitiveById`, etc. `PatientRepositoryLive` can depend on `Database`, while tests provide a small `PatientRepositoryTest` layer.
+
+That keeps tests focused on Patientor behavior instead of maintaining a second, fake Kysely.
+
 ## Testing failures
 
 Use `Effect.exit` when you want to assert typed failures:

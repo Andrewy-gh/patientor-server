@@ -9,7 +9,12 @@ import {
 import { Database } from "../src/db/database.js";
 import { HttpRoutes } from "../src/http/routes.js";
 import { PatientRepository } from "../src/patients/repository.js";
-import { Entry, NewEntryInput, NonSensitivePatient } from "../src/patients/types.js";
+import {
+  Entry,
+  NewEntryInput,
+  NewPatientInput,
+  NonSensitivePatient,
+} from "../src/patients/types.js";
 
 const patientId = "11111111-1111-4111-8111-111111111111";
 const missingPatientId = "22222222-2222-4222-8222-222222222222";
@@ -26,6 +31,17 @@ const makePatientRepository = (patients: NonSensitivePatient[] = [patient]) => {
   const entries: Entry[] = [];
 
   return {
+    addPatient: (newPatient: NewPatientInput) =>
+      Effect.sync(() => {
+        const addedPatient = {
+          id: `patient-${patients.length + 1}`,
+          ...newPatient,
+          entries: [],
+        };
+
+        patients.push(addedPatient);
+        return addedPatient;
+      }),
     addEntry: (id: string, entry: NewEntryInput) =>
       Effect.sync(() => {
         const foundPatient = patients.find((candidate) => candidate.id === id);
@@ -40,6 +56,20 @@ const makePatientRepository = (patients: NonSensitivePatient[] = [patient]) => {
         } as Entry;
 
         entries.push(newEntry);
+
+        return {
+          ...foundPatient,
+          entries: [...entries],
+        };
+      }),
+    findNonSensitive: () => Effect.sync(() => [...patients]),
+    findNonSensitiveById: (id: string) =>
+      Effect.sync(() => {
+        const foundPatient = patients.find((candidate) => candidate.id === id);
+
+        if (!foundPatient) {
+          return undefined;
+        }
 
         return {
           ...foundPatient,

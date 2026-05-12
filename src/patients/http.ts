@@ -5,12 +5,7 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "effect/unstable/http";
-import {
-  addNewPatient,
-  addPatientEntry,
-  getNonSensitivePatient,
-  getNonSensitivePatients,
-} from "./service.js";
+import { PatientRepository } from "./repository.js";
 
 const isRequestParseError = (error: unknown) =>
   HttpServerError.isHttpServerError(error) &&
@@ -19,8 +14,12 @@ const isRequestParseError = (error: unknown) =>
 const patientsRoute = HttpRouter.route(
   "GET",
   "/api/patients",
-  getNonSensitivePatients.pipe(
-    Effect.flatMap((patients) => HttpServerResponse.json(patients)),
+  Effect.gen(function* () {
+    const patients = yield* PatientRepository;
+    const foundPatients = yield* patients.findNonSensitive();
+
+    return yield* HttpServerResponse.json(foundPatients);
+  }).pipe(
     Effect.catchTag("PatientReadError", (error) =>
       Effect.gen(function* () {
         yield* Effect.logError(error);
@@ -39,8 +38,9 @@ const patientRoute = HttpRouter.route(
   "/api/patients/:id",
   Effect.gen(function* () {
     const { id } = yield* HttpRouter.schemaPathParams(PatientPathParams);
+    const patients = yield* PatientRepository;
 
-    const patient = yield* getNonSensitivePatient(id);
+    const patient = yield* patients.findNonSensitiveById(id);
 
     if (!patient) {
       return HttpServerResponse.empty({ status: 404 });
@@ -101,8 +101,9 @@ const addPatientRoute = HttpRouter.route(
     const newPatient = yield* HttpServerRequest.schemaBodyJson(
       NewPatientInputSchema,
     );
+    const patients = yield* PatientRepository;
 
-    const addedPatient = yield* addNewPatient(newPatient);
+    const addedPatient = yield* patients.addPatient(newPatient);
 
     return yield* HttpServerResponse.json(addedPatient, { status: 201 });
   }).pipe(
@@ -168,8 +169,9 @@ const addPatientEntryRoute = HttpRouter.route(
     const newEntry = yield* HttpServerRequest.schemaBodyJson(
       NewEntryInputSchema,
     );
+    const patients = yield* PatientRepository;
 
-    const patient = yield* addPatientEntry(id, newEntry);
+    const patient = yield* patients.addEntry(id, newEntry);
 
     if (!patient) {
       return HttpServerResponse.empty({ status: 404 });

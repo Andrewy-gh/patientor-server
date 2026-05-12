@@ -27,6 +27,7 @@ Local source of truth checked while writing these notes:
 5. [Schema validation](./05-schema-validation.md)
 6. [HTTP routes](./06-http-routes.md)
 7. [Testing](./07-testing.md)
+8. [HttpApi decision](./08-httpapi.md)
 
 ## Core rule
 

@@ -5,13 +5,16 @@ import { Database } from "../db/database.js";
 import {
   DB,
   Entries,
+  Gender,
   HealthCheckRating as DbHealthCheckRating,
 } from "../db/generated.js";
 import {
   Entry,
   HealthCheckRating,
   NewEntryInput,
+  NewPatientInput,
   NonSensitivePatient,
+  Patient,
 } from "./types.js";
 
 type EntryRow = Selectable<Entries>;
@@ -57,8 +60,112 @@ export class PatientRepository extends Context.Service<
       PatientWithEntries | undefined,
       PatientWriteError | InvalidPatientEntry
     >;
+    readonly addPatient: (
+      patient: NewPatientInput,
+    ) => Effect.Effect<Patient, PatientWriteError>;
+    readonly findNonSensitive: () => Effect.Effect<
+      ReadonlyArray<NonSensitivePatient>,
+      PatientReadError
+    >;
+    readonly findNonSensitiveById: (
+      id: string,
+    ) => Effect.Effect<
+      PatientWithEntries | undefined,
+      PatientReadError | InvalidPatientEntry
+    >;
   }
 >()("PatientRepository") {}
+
+const findNonSensitive = Effect.fnUntraced(function* (db: Kysely<DB>) {
+  const patients = yield* Effect.tryPromise({
+    try: () =>
+      db
+        .selectFrom("patients")
+        .select(["id", "name", "date_of_birth", "gender", "occupation"])
+        .orderBy("name")
+        .execute(),
+    catch: (cause) => new PatientReadError({ cause }),
+  });
+
+  return patients.map(({ id, name, date_of_birth, gender, occupation }) => ({
+    id,
+    name,
+    dateOfBirth: date_of_birth,
+    gender,
+    occupation,
+  }));
+});
+
+const findNonSensitiveById = Effect.fnUntraced(function* (
+  db: Kysely<DB>,
+  id: string,
+) {
+  const patient = yield* Effect.tryPromise({
+    try: () =>
+      db
+        .selectFrom("patients")
+        .select(["id", "name", "date_of_birth", "gender", "occupation"])
+        .where("id", "=", id)
+        .executeTakeFirst(),
+    catch: (cause) => new PatientReadError({ cause }),
+  });
+
+  if (!patient) {
+    return undefined;
+  }
+
+  const entries = yield* Effect.tryPromise({
+    try: () =>
+      db
+        .selectFrom("entries")
+        .selectAll()
+        .where("patient_id", "=", id)
+        .orderBy("date")
+        .execute(),
+    catch: (cause) => new PatientReadError({ cause }),
+  });
+
+  const mappedEntries = yield* Effect.all(entries.map(toEntry));
+
+  return {
+    id: patient.id,
+    name: patient.name,
+    dateOfBirth: patient.date_of_birth,
+    gender: patient.gender,
+    occupation: patient.occupation,
+    entries: mappedEntries,
+  };
+});
+
+const addPatient = Effect.fnUntraced(function* (
+  db: Kysely<DB>,
+  patient: NewPatientInput,
+) {
+  const newPatient = {
+    id: uuid(),
+    ...patient,
+    entries: [],
+  };
+
+  return yield* Effect.tryPromise({
+    try: async () => {
+      await db
+        .insertInto("patients")
+        .values({
+          id: newPatient.id,
+          name: newPatient.name,
+          date_of_birth: newPatient.dateOfBirth,
+          ssn: newPatient.ssn,
+          gender: newPatient.gender as Gender,
+          occupation: newPatient.occupation,
+        })
+        .execute();
+
+      return newPatient;
+    },
+    catch: (cause) => new PatientWriteError({ cause }),
+  });
+});
 
 const addEntry = Effect.fnUntraced(function* (
   db: Kysely<DB>,
@@ -142,6 +249,9 @@ export const PatientRepositoryLive = Layer.effect(
     const db = yield* Database;
 
     return {
+      addPatient: (patient: NewPatientInput) => addPatient(db, patient),
+      findNonSensitive: () => findNonSensitive(db),
+      findNonSensitiveById: (id: string) => findNonSensitiveById(db, id),
       addEntry: (patientId: string, entry: NewEntryInput) =>
         addEntry(db, patientId, entry),
     };

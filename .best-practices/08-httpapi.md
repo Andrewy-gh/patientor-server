@@ -1,26 +1,26 @@
-# 08 - HttpApi Decision
+# 08 - HttpApi Migration
 
-Patientor should keep the current `HttpRouter` route style until there is a
-clear product need for a schema-first API contract.
+Patientor is moving from plain `HttpRouter` routes to Effect's schema-first
+`HttpApi`.
 
-## Current preference
+The product behavior should stay boring: the same public HTTP paths, status
+codes, and response shapes should keep working for `curl`, browser `fetch`,
+Postman, and non-Effect clients. The migration value is a clearer API contract:
+request validation, response schemas, generated OpenAPI, and typed Effect
+clients can all come from one definition.
 
-Prefer `HttpRouter` for the app today.
+## Current direction
 
-That keeps the public behavior easy to reason about: each route parses request
-input, calls the feature repository or service, maps known failures to HTTP
-status codes, and returns JSON. This matches the current slice shape in
-`src/patients/http.ts`, `src/diagnoses/http.ts`, and `src/http/routes.ts`.
+Prefer `HttpApi` for new route migration work.
 
-Use `HttpApi` later when Patientor needs one of these concrete outcomes:
+Keep the current feature slice boundaries:
 
-- generated OpenAPI from the backend contract
-- typed Effect clients shared with a frontend or another service
-- one schema-first contract for request validation and response encoding
-- endpoint-level middleware and documented security behavior
+- `types.ts`: domain/API DTO types and pure shape definitions
+- `service.ts` or `repository.ts`: database access and domain behavior
+- `http.ts` or `api.ts`: request parsing/status mapping and HTTP contract
 
-Do not migrate only because `HttpApi` exists. For this small API, the current
-router gives the same external HTTP behavior with fewer moving parts.
+Do not turn the migration into a broad rewrite. Keep service and repository
+behavior stable unless a route needs a product behavior change.
 
 ## Installed API shape
 
@@ -60,8 +60,8 @@ The important installed shapes are:
 
 ## Migration rule
 
-If Patientor moves to `HttpApi`, migrate one feature group at a time and keep
-the public paths unchanged unless product explicitly chooses versioned URLs.
+Migrate one feature group at a time and keep the public paths unchanged unless
+product explicitly chooses versioned URLs.
 
 Recommended order:
 
@@ -87,5 +87,5 @@ Start with API contract schemas near the HTTP contract, not buried inside the
 handler. Once stable, decide whether exported TypeScript DTO types should be
 derived from schemas or kept side by side.
 
-Do not add shared abstractions just to prepare for `HttpApi`. Add the contract
-files only when the migration actually starts.
+Keep the first migration direct and readable. Add shared helpers only after two
+or more migrated route groups clearly need the same behavior.

@@ -12,6 +12,7 @@ import { AppConfigService } from "../src/config.js";
 import { DatabaseLive } from "../src/db/database.js";
 import { DB } from "../src/db/generated.js";
 import { HttpRoutes } from "../src/http/routes.js";
+import { PatientRepositoryLive } from "../src/patients/repository.js";
 
 const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const describeIfDb = databaseUrl ? describe : describe.skip;
@@ -124,7 +125,7 @@ const AppConfigTest = Layer.succeed(AppConfigService)({
 
 const ServerLive = HttpRouter.serve(HttpRoutes).pipe(
   Layer.provideMerge(NodeHttpServer.layerTest),
-  Layer.provide(DatabaseLive),
+  Layer.provide(PatientRepositoryLive.pipe(Layer.provideMerge(DatabaseLive))),
   Layer.provide(AppConfigTest),
 );
 

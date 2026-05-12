@@ -61,10 +61,10 @@ const patients = yield* Effect.tryPromise({
 
 Do not hide Kysely behind a generic repository unless the duplication becomes real. Right now, direct typed queries are clearer.
 
-When duplication does become real, prefer an Effect service boundary over a classic OOP repository. The shape should be a `Context.Tag` plus `Layer`:
+When duplication does become real, prefer an Effect service boundary over a classic OOP repository. In this repo's installed Effect v4 beta, the shape should be a `Context.Service` plus `Layer`:
 
 ```ts
-export class PatientRepository extends Context.Tag("PatientRepository")<
+export class PatientRepository extends Context.Service<
   PatientRepository,
   {
     readonly addEntry: (
@@ -72,7 +72,7 @@ export class PatientRepository extends Context.Tag("PatientRepository")<
       entry: NewEntryInput,
     ) => Effect.Effect<Patient | undefined, PatientReadError | PatientWriteError>;
   }
->() {}
+>()("PatientRepository") {}
 ```
 
 `PatientRepositoryLive` should depend on `Database`; tests can provide `PatientRepositoryTest`. That aligns with Effect dependency injection without hiding SQL behind vague abstractions too early.

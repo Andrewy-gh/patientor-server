@@ -71,7 +71,7 @@ Bad use of a fake database:
 - asserting implementation trivia like call counts or exact query order
 - treating the fake as proof that SQL/Postgres behavior works
 
-If a fake starts mirroring too much Kysely, introduce an Effect service boundary for the app-owned behavior instead. For example, a `PatientRepository` `Context.Tag` can expose `addEntry`, `findNonSensitiveById`, etc. `PatientRepositoryLive` can depend on `Database`, while tests provide a small `PatientRepositoryTest` layer.
+If a fake starts mirroring too much Kysely, introduce an Effect service boundary for the app-owned behavior instead. For example, a `PatientRepository` `Context.Service` can expose `addEntry`, `findNonSensitiveById`, etc. `PatientRepositoryLive` can depend on `Database`, while tests provide a small `PatientRepositoryTest` layer.
 
 That keeps tests focused on Patientor behavior instead of maintaining a second, fake Kysely.
 

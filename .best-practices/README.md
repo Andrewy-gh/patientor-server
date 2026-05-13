@@ -16,7 +16,7 @@ Local source of truth checked while writing these notes:
 - `effect@4.0.0-beta.65` in `node_modules/effect`
 - `@effect/platform-node@4.0.0-beta.65`
 - `@effect/vitest@4.0.0-beta.65`
-- current repo code in `src/config.ts`, `src/db/database.ts`, `src/patients/*`, `src/diagnoses/*`, and `src/http/*`
+- current server code in `apps/server/src/config.ts`, `apps/server/src/db/database.ts`, `apps/server/src/patients/*`, `apps/server/src/diagnoses/*`, and `apps/server/src/http/*`
 
 ## Recommended reading order
 

@@ -2,7 +2,7 @@
 
 Anything from an HTTP request is untrusted. In Patientor that includes path params, patient creation JSON, and future entry creation JSON.
 
-Effect v4 `Schema` is already used correctly in `src/patients/http.ts`.
+Effect v4 `Schema` is already used correctly in `apps/server/src/patients/http.ts`.
 
 ## Path params
 

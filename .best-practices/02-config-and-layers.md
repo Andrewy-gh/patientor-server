@@ -2,7 +2,7 @@
 
 Patientor should let Effect own configuration instead of scattering `process.env` reads.
 
-Current repo already follows the right direction in `src/config.ts`:
+Current server app already follows the right direction in `apps/server/src/config.ts`:
 
 ```ts
 import { Config, Context, Effect, Layer } from "effect";

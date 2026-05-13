@@ -1,0 +1,13 @@
+{
+  "lsp": {
+    "yaml-language-server": {
+      "settings": {
+        "yaml": {
+          "schemas": {
+            "./apps/server/schemas/compose-spec.json": "docker-compose.yml"
+          }
+        }
+      }
+    }
+  }
+}

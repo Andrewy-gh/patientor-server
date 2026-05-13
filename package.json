@@ -1,42 +1,21 @@
 {
-  "name": "patientor-server",
-  "version": "1.0.0",
-  "description": "",
+  "name": "patientor",
+  "version": "0.0.0",
+  "private": true,
   "type": "module",
-  "main": "index.js",
-  "author": "",
-  "license": "ISC",
   "scripts": {
-    "tsc": "tsc",
-    "typecheck": "tsc --noEmit",
-    "dev": "tsx watch src/index.ts",
-    "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts",
-    "db:types": "kysely-codegen",
-    "lint": "eslint --ext .ts .",
-    "start": "node build/index.js",
-    "test": "cross-env NODE_ENV=test vitest run"
-  },
-  "dependencies": {
-    "@effect/platform-node": "^4.0.0-beta.65",
-    "dotenv": "^17.4.2",
-    "effect": "^4.0.0-beta.65",
-    "kysely": "^0.28.17",
-    "pg": "^8.20.0",
-    "uuid": "^9.0.1"
+    "ready": "vp run -r lint && vp run -r test && vp run -r build",
+    "dev": "vp run server#dev",
+    "build": "vp run -r build",
+    "test": "vp run -r test",
+    "typecheck": "vp run -r typecheck",
+    "lint": "vp run -r lint"
   },
   "devDependencies": {
-    "@effect/language-service": "^0.85.1",
-    "@effect/vitest": "^4.0.0-beta.65",
-    "@types/node": "^25.6.0",
-    "@types/pg": "^8.20.0",
-    "@types/uuid": "^9.0.7",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "cross-env": "^10.1.0",
-    "eslint": "^8.56.0",
-    "kysely-codegen": "^0.20.0",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
-  }
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@10.32.1"
 }

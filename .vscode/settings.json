@@ -1,5 +1,0 @@
-{
-  "yaml.schemas": {
-    "./schemas/compose-spec.json": "docker-compose.yml"
-  }
-}

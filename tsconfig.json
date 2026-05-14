@@ -1,23 +1,9 @@
 {
-  "$schema": "./node_modules/@effect/language-service/schema.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "plugins": [
-      {
-        "name": "@effect/language-service"
-      }
-    ],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "./build",
-    "types": ["node", "vitest/globals"],
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true
+    "noEmit": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": true,
+    "esModuleInterop": true
   }
 }

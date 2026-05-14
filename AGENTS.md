@@ -24,8 +24,8 @@ dependency is the source of truth for version-specific API shapes:
 
 Before writing Effect code:
 
-1. Check `package.json` / `package-lock.json` for the repo's pinned Effect version.
-2. Use `node_modules/effect` for installed v4 examples and type signatures.
+1. Check `apps/server/package.json` / `pnpm-lock.yaml` for the repo's pinned Effect version.
+2. Use `apps/server/node_modules/effect` for installed v4 examples and type signatures.
 3. Prefer existing repo code patterns and `.best-practices/` over external examples when the local code already has a clear v4 pattern.
 
 Topics: quick-start, project-setup, tsconfig, basics, services-and-layers, data-modeling, error-handling, config, testing, cli.

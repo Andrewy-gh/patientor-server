@@ -1,26 +1,27 @@
 # Patientor
 
-This is the server side code for the Patientor Typescript app. This app allows users to add and view patients.
+Patientor is organized as a pnpm monorepo.
 
-## How It's Made:
+## Apps
 
-**Backend:** Nodejs, Express, Typescript
+- `apps/server`: the existing Patientor server.
 
-## How to Run:
+## Development
 
-1. Fork the repository
+Install dependencies:
 
-2. In the project root directory, install dependencies:
-   `npm install`
+```bash
+pnpm install
+```
 
-3. Copy `.env.example` to `.env`
+Run the server:
 
-4. Start Postgres:
-   `docker compose up -d`
+```bash
+pnpm dev
+```
 
-5. Create and seed the database:
-   `npm run db:migrate`
-   `npm run db:seed`
+Run the workspace checks:
 
-6. Run the server in development mode:
-   `npm run dev`
+```bash
+pnpm ready
+```

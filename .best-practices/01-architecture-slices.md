@@ -5,14 +5,14 @@ Patientor's useful slices are small and should stay small.
 ## Current slices
 
 ```txt
-src/config.ts          env-backed app configuration
-src/db/database.ts     Kysely/Postgres resource service
-src/db/migrate.ts      schema creation script
-src/db/seed.ts         deterministic seed script
-src/diagnoses/*        diagnosis read API
-src/patients/*         patient read/write API
-src/http/*             native Effect HTTP server/routes
-src/layers.ts          app dependency graph
+apps/server/src/config.ts          env-backed app configuration
+apps/server/src/db/database.ts     Kysely/Postgres resource service
+apps/server/src/db/migrate.ts      schema creation script
+apps/server/src/db/seed.ts         deterministic seed script
+apps/server/src/diagnoses/*        diagnosis read API
+apps/server/src/patients/*         patient read/write API
+apps/server/src/http/*             native Effect HTTP server/routes
+apps/server/src/layers.ts          app dependency graph
 ```
 
 ## Best-practice shape for a slice

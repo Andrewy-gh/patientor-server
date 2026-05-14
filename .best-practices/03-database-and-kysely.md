@@ -114,10 +114,10 @@ The transaction remains a normal Kysely transaction. Effect owns the boundary an
 
 ## Generated DB types
 
-Do not manually edit `src/db/generated.ts`. Change the database schema, then run:
+Do not manually edit `apps/server/src/db/generated.ts`. Change the database schema, then run:
 
 ```sh
-npm run db:types
+pnpm --filter server db:types
 ```
 
-Keep custom JSON column types in `src/db/entryTypes.ts` and `.kysely-codegenrc.json`.
+Keep custom JSON column types in `apps/server/src/db/entryTypes.ts` and `apps/server/.kysely-codegenrc.json`.

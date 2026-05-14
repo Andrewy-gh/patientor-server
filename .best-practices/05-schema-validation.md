@@ -17,7 +17,7 @@ const PatientPathParams = Schema.Struct({
 Use it at the route edge:
 
 ```ts
-const { id } = yield* HttpRouter.schemaPathParams(PatientPathParams);
+const { id } = yield * HttpRouter.schemaPathParams(PatientPathParams);
 ```
 
 Return `400` for schema errors:
@@ -25,7 +25,7 @@ Return `400` for schema errors:
 ```ts
 Effect.catchIf(Schema.isSchemaError, () =>
   Effect.succeed(HttpServerResponse.empty({ status: 400 })),
-)
+);
 ```
 
 For JSON body parsing, distinguish malformed request bodies from schema failures even though both return `400`:
@@ -34,8 +34,7 @@ For JSON body parsing, distinguish malformed request bodies from schema failures
 import { HttpServerError } from "effect/unstable/http";
 
 const isRequestParseError = (error: unknown) =>
-  HttpServerError.isHttpServerError(error) &&
-  error.reason._tag === "RequestParseError";
+  HttpServerError.isHttpServerError(error) && error.reason._tag === "RequestParseError";
 ```
 
 - `Schema.SchemaError`: valid JSON, but not valid Patientor input
@@ -50,11 +49,7 @@ const NewPatientInputSchema = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1)),
   dateOfBirth: Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/)),
   ssn: Schema.String.check(Schema.isMinLength(1)),
-  gender: Schema.Union([
-    Schema.Literal("female"),
-    Schema.Literal("male"),
-    Schema.Literal("other"),
-  ]),
+  gender: Schema.Union([Schema.Literal("female"), Schema.Literal("male"), Schema.Literal("other")]),
   occupation: Schema.String.check(Schema.isMinLength(1)),
 });
 ```
@@ -62,13 +57,9 @@ const NewPatientInputSchema = Schema.Struct({
 Recommended improvement: encode Patientor domain constraints more tightly.
 
 ```ts
-const Ssn = Schema.String.check(
-  Schema.isPattern(/^\d{6}-[A-Za-z0-9]{3,4}$/),
-);
+const Ssn = Schema.String.check(Schema.isPattern(/^\d{6}-[A-Za-z0-9]{3,4}$/));
 
-const DateOnly = Schema.String.check(
-  Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/),
-);
+const DateOnly = Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/));
 
 const Gender = Schema.Union([
   Schema.Literal("female"),

@@ -15,7 +15,19 @@ Before making substantial Effect changes, read the Patientor-specific guidance i
 
 Those files are the preferred local playbook for this app. They are intentionally Patientor-specific and should win over generic Effect examples unless the installed package types prove otherwise.
 
+## Tooling
+
+This repo uses Vite+ through the `vp` command. Vite+ wraps Oxlint, Oxfmt,
+Vitest, and package builds, so do not add ESLint scaffolding to new packages
+unless a package has a specific reason to opt out.
+
+- Use `vp check` for formatting, linting, and type checking.
+- Use `vp test` or `vp run -r test` for tests.
+- Use `vp pack` for buildable library packages under `packages/*`.
+- Keep package-level `vite.config.ts` files aligned with Vite+ package config.
+
 <!-- effect-solutions:start -->
+
 ## Effect Best Practices
 
 **IMPORTANT:** This repo uses the published Effect v4 beta. The installed repo
@@ -41,4 +53,5 @@ Some older generated guidance below referenced a Windows-only shared checkout pa
 Do **not** assume that path exists. The current development environment may be Linux, and the reliable source of truth in this repo is the installed package under `node_modules/effect` plus the Patientor-specific `.best-practices/` files.
 
 If a Windows checkout exists on another machine, treat it as optional background context only. Always verify exact APIs against this repo's installed `node_modules` before editing code.
+
 <!-- effect-solutions:end -->

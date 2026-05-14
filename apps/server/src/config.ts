@@ -6,10 +6,7 @@ export interface AppConfig {
   readonly nodeEnv: string;
 }
 
-export class AppConfigService extends Context.Service<
-  AppConfigService,
-  AppConfig
->()("AppConfig") {}
+export class AppConfigService extends Context.Service<AppConfigService, AppConfig>()("AppConfig") {}
 
 const appConfig = Config.all({
   port: Config.number("PORT").pipe(Config.withDefault(3001)),

@@ -1,11 +1,7 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, beforeAll, describe, it } from "@effect/vitest";
 import { Effect, Layer, Stream } from "effect";
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpRouter,
-} from "effect/unstable/http";
+import { HttpClient, HttpClientRequest, HttpRouter } from "effect/unstable/http";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { Pool } from "pg";
 import { AppConfigService } from "../src/config.js";
@@ -74,9 +70,7 @@ const migrate = (db: Kysely<DB>) =>
       .addColumn("ssn", "text", (column) => column.notNull())
       .addColumn("gender", sql`gender`, (column) => column.notNull())
       .addColumn("occupation", "text", (column) => column.notNull())
-      .addColumn("created_at", "timestamp", (column) =>
-        column.notNull().defaultTo(sql`now()`),
-      )
+      .addColumn("created_at", "timestamp", (column) => column.notNull().defaultTo(sql`now()`))
       .execute();
 
     await db.schema
@@ -101,9 +95,7 @@ const migrate = (db: Kysely<DB>) =>
 
 const resetDb = (db: Kysely<DB>) =>
   Effect.promise(async () => {
-    await sql`TRUNCATE TABLE entries, patients RESTART IDENTITY CASCADE`.execute(
-      db,
-    );
+    await sql`TRUNCATE TABLE entries, patients RESTART IDENTITY CASCADE`.execute(db);
     await db
       .insertInto("patients")
       .values({
@@ -132,13 +124,10 @@ const ServerLive = HttpRouter.serve(HttpRoutes).pipe(
 const postEntry = (body: unknown) =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient;
-    const request = HttpClientRequest.post(
-      `/api/patients/${patientId}/entries`,
-    ).pipe(
-      HttpClientRequest.bodyStream(
-        Stream.make(encoder.encode(JSON.stringify(body))),
-        { contentType: "application/json" },
-      ),
+    const request = HttpClientRequest.post(`/api/patients/${patientId}/entries`).pipe(
+      HttpClientRequest.bodyStream(Stream.make(encoder.encode(JSON.stringify(body))), {
+        contentType: "application/json",
+      }),
     );
 
     return yield* client.execute(request);
@@ -189,13 +178,7 @@ describeIfDb("POST /api/patients/:id/entries with live database", () => {
           Effect.promise(() =>
             db
               .selectFrom("entries")
-              .select([
-                "type",
-                "health_check_rating",
-                "discharge",
-                "employer_name",
-                "sick_leave",
-              ])
+              .select(["type", "health_check_rating", "discharge", "employer_name", "sick_leave"])
               .where("patient_id", "=", patientId)
               .orderBy("date")
               .execute(),

@@ -51,11 +51,17 @@ Keep these plain unless they need Effect dependencies:
 const toEntry = (entry: EntryRow): Entry => {
   switch (entry.type) {
     case "HealthCheck":
-      return { /* ... */ }
+      return {
+        /* ... */
+      };
     case "Hospital":
-      return { /* ... */ }
+      return {
+        /* ... */
+      };
     case "OccupationalHealthcare":
-      return { /* ... */ }
+      return {
+        /* ... */
+      };
   }
 };
 ```

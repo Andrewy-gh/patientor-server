@@ -12,6 +12,4 @@ const NodeServerLive = Layer.effect(HttpServer.HttpServer)(
   }),
 ).pipe(Layer.provide(NodeHttpServer.layerHttpServices));
 
-export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(
-  Layer.provide(NodeServerLive),
-);
+export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(Layer.provide(NodeServerLive));

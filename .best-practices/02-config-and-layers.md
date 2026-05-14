@@ -13,10 +13,7 @@ export interface AppConfig {
   readonly nodeEnv: string;
 }
 
-export class AppConfigService extends Context.Service<
-  AppConfigService,
-  AppConfig
->()("AppConfig") {}
+export class AppConfigService extends Context.Service<AppConfigService, AppConfig>()("AppConfig") {}
 
 const appConfig = Config.all({
   port: Config.number("PORT").pipe(Config.withDefault(3001)),
@@ -65,9 +62,7 @@ import { Layer } from "effect";
 import { AppConfigLive } from "./config.js";
 import { DatabaseLive } from "./db/database.js";
 
-export const AppLive = DatabaseLive.pipe(
-  Layer.provideMerge(AppConfigLive),
-);
+export const AppLive = DatabaseLive.pipe(Layer.provideMerge(AppConfigLive));
 ```
 
 Use `Layer.provideMerge` here because the database depends on config and the final app still needs both services available.

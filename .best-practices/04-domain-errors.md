@@ -90,7 +90,7 @@ const toEntryEffect = (entry: EntryRow) => {
 Then map many rows with `Effect.forEach`:
 
 ```ts
-const mappedEntries = yield* Effect.forEach(entries, toEntryEffect);
+const mappedEntries = yield * Effect.forEach(entries, toEntryEffect);
 ```
 
 ## Route mapping

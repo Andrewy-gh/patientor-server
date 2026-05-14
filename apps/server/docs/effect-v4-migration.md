@@ -69,10 +69,7 @@ export interface AppConfig {
   readonly nodeEnv: string;
 }
 
-export class AppConfigService extends Context.Service<
-  AppConfigService,
-  AppConfig
->()("AppConfig") {}
+export class AppConfigService extends Context.Service<AppConfigService, AppConfig>()("AppConfig") {}
 
 const appConfig = Config.all({
   port: Config.number("PORT").pipe(Config.withDefault(3001)),
@@ -117,12 +114,7 @@ const provider = ConfigProvider.fromEnv({
 const program = Effect.gen(function* () {
   const config = yield* AppConfigService;
   return config.port;
-}).pipe(
-  Effect.provide([
-    AppConfigLive,
-    ConfigProvider.layer(provider),
-  ]),
-);
+}).pipe(Effect.provide([AppConfigLive, ConfigProvider.layer(provider)]));
 ```
 
 Use `ConfigProvider.fromDotEnv()` when the application should read local `.env`
@@ -132,10 +124,7 @@ values through Effect:
 import { NodeServices } from "@effect/platform-node";
 import { ConfigProvider, Layer } from "effect";
 
-const DotEnvLive = ConfigProvider.layerAdd(
-  ConfigProvider.fromDotEnv(),
-  { asPrimary: true },
-);
+const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), { asPrimary: true });
 
 const MainLive = HttpServerLive.pipe(
   Layer.provide(AppLive),
@@ -161,9 +150,7 @@ import { Pool } from "pg";
 import { AppConfigService } from "../config.js";
 import { DB } from "./generated.js";
 
-export class Database extends Context.Service<Database, Kysely<DB>>()(
-  "Database",
-) {}
+export class Database extends Context.Service<Database, Kysely<DB>>()("Database") {}
 
 const makeDatabase = Effect.gen(function* () {
   const config = yield* AppConfigService;
@@ -183,9 +170,7 @@ export const DatabaseLive = Layer.effect(Database)(makeDatabase);
 Notation reminder for the service declaration:
 
 ```ts
-export class Database extends Context.Service<Database, Kysely<DB>>()(
-  "Database",
-) {}
+export class Database extends Context.Service<Database, Kysely<DB>>()("Database") {}
 ```
 
 The class name `Database` is the service key imported by application code. The
@@ -248,11 +233,7 @@ export const getDiagnoses = Effect.gen(function* () {
 
   const diagnoses = yield* Effect.tryPromise({
     try: () =>
-      db
-        .selectFrom("diagnoses")
-        .select(["code", "name", "latin"])
-        .orderBy("code")
-        .execute(),
+      db.selectFrom("diagnoses").select(["code", "name", "latin"]).orderBy("code").execute(),
     catch: (cause) => new DiagnosisReadError({ cause }),
   });
 
@@ -271,11 +252,7 @@ export const getPatient = Effect.fnUntraced(function* (id: string) {
   const db = yield* Database;
   const patient = yield* Effect.tryPromise({
     try: () =>
-      db
-        .selectFrom("patients")
-        .select(["id", "name"])
-        .where("id", "=", id)
-        .executeTakeFirst(),
+      db.selectFrom("patients").select(["id", "name"]).where("id", "=", id).executeTakeFirst(),
     catch: (cause) => new PatientReadError({ cause }),
   });
 
@@ -310,17 +287,10 @@ Start with the simple routes before moving request body parsing and patient vali
 ```ts
 // src/http/routes.ts
 import { Effect } from "effect";
-import {
-  HttpRouter,
-  HttpServerResponse,
-} from "effect/unstable/http";
+import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
 import { getDiagnoses } from "../services/diagnosisService.js";
 
-const pingRoute = HttpRouter.route(
-  "GET",
-  "/api/ping",
-  HttpServerResponse.text("pong"),
-);
+const pingRoute = HttpRouter.route("GET", "/api/ping", HttpServerResponse.text("pong"));
 
 const diagnosesRoute = HttpRouter.route(
   "GET",
@@ -336,10 +306,7 @@ const diagnosesRoute = HttpRouter.route(
   ),
 );
 
-export const HttpRoutes = HttpRouter.addAll([
-  pingRoute,
-  diagnosesRoute,
-]);
+export const HttpRoutes = HttpRouter.addAll([pingRoute, diagnosesRoute]);
 ```
 
 If TypeScript complains about `HttpRouter.addAll` shape, use the lower-level builder style from the Effect tests:
@@ -351,9 +318,7 @@ export const HttpRoutes = HttpRouter.use((router) =>
     yield* router.add(
       "GET",
       "/api/diagnoses",
-      getDiagnoses.pipe(
-        Effect.flatMap((diagnoses) => HttpServerResponse.json(diagnoses)),
-      ),
+      getDiagnoses.pipe(Effect.flatMap((diagnoses) => HttpServerResponse.json(diagnoses))),
     );
   }),
 );
@@ -428,16 +393,14 @@ import { createServer } from "node:http";
 import { AppConfigService } from "../config.js";
 import { HttpRoutes } from "./routes.js";
 
-const NodeServerLive = Layer.effect(HttpServer.HttpServer)(Effect.gen(function* () {
-  const config = yield* AppConfigService;
-  return yield* NodeHttpServer.make(createServer, { port: config.port });
-})).pipe(
-  Layer.provide(NodeHttpServer.layerHttpServices),
-);
+const NodeServerLive = Layer.effect(HttpServer.HttpServer)(
+  Effect.gen(function* () {
+    const config = yield* AppConfigService;
+    return yield* NodeHttpServer.make(createServer, { port: config.port });
+  }),
+).pipe(Layer.provide(NodeHttpServer.layerHttpServices));
 
-export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(
-  Layer.provide(NodeServerLive),
-);
+export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(Layer.provide(NodeServerLive));
 ```
 
 Depending on the exact `@effect/platform-node` beta API available after install, the server layer may also be expressible directly:
@@ -464,10 +427,7 @@ import { ConfigProvider, Layer } from "effect";
 import { AppLive } from "./layers.js";
 import { HttpServerLive } from "./http/server.js";
 
-const DotEnvLive = ConfigProvider.layerAdd(
-  ConfigProvider.fromDotEnv(),
-  { asPrimary: true },
-);
+const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), { asPrimary: true });
 
 const MainLive = HttpServerLive.pipe(
   Layer.provide(AppLive),
@@ -538,9 +498,7 @@ describe("getDiagnoses", () => {
         selectFrom: () => ({
           select: () => ({
             orderBy: () => ({
-              execute: async () => [
-                { code: "A01", name: "Test", latin: null },
-              ],
+              execute: async () => [{ code: "A01", name: "Test", latin: null }],
             }),
           }),
         }),
@@ -582,9 +540,7 @@ import { TestClock } from "effect/testing";
 
 it.effect("controls time", () =>
   Effect.gen(function* () {
-    const fiber = yield* Effect.forkChild(
-      Effect.sleep(60_000).pipe(Effect.as("done" as const)),
-    );
+    const fiber = yield* Effect.forkChild(Effect.sleep(60_000).pipe(Effect.as("done" as const)));
 
     yield* TestClock.adjust(60_000);
 

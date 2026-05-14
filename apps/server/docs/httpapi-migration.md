@@ -177,16 +177,13 @@ const DateOnly = Schema.String.check(
 
     const date = new Date(`${value}T00:00:00.000Z`);
     return (
-      !Number.isNaN(date.getTime()) &&
-      date.toISOString().slice(0, 10) === value
-    ) ||
-      "Expected a valid date in YYYY-MM-DD format";
+      (!Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value) ||
+      "Expected a valid date in YYYY-MM-DD format"
+    );
   }),
 );
 
-const Ssn = Schema.String.check(
-  Schema.isPattern(/^\d{6}-[A-Za-z0-9]{3,4}$/),
-);
+const Ssn = Schema.String.check(Schema.isPattern(/^\d{6}-[A-Za-z0-9]{3,4}$/));
 
 export const NewPatientInput = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1)),
@@ -234,9 +231,7 @@ export const NewEntryInput = Schema.Union([
   }),
 ]);
 
-export const UpdatedPatient = NonSensitivePatientWithEntries.pipe(
-  HttpApiSchema.status("Created"),
-);
+export const UpdatedPatient = NonSensitivePatientWithEntries.pipe(HttpApiSchema.status("Created"));
 ```
 
 `HttpApiSchema.status("Created")` is for JSON bodies with status `201`.
@@ -264,10 +259,7 @@ export class PatientsApi extends HttpApiGroup.make("patients").add(
   HttpApiEndpoint.get("get", "/patients/:id", {
     params: PatientIdParams,
     success: NonSensitivePatientWithEntries,
-    error: [
-      HttpApiError.NotFound,
-      HttpApiError.InternalServerError,
-    ],
+    error: [HttpApiError.NotFound, HttpApiError.InternalServerError],
   }),
   HttpApiEndpoint.post("create", "/patients", {
     payload: NewPatientInput,
@@ -278,10 +270,7 @@ export class PatientsApi extends HttpApiGroup.make("patients").add(
     params: PatientIdParams,
     payload: NewEntryInput,
     success: UpdatedPatient,
-    error: [
-      HttpApiError.NotFound,
-      HttpApiError.InternalServerError,
-    ],
+    error: [HttpApiError.NotFound, HttpApiError.InternalServerError],
   }),
 ) {}
 
@@ -299,8 +288,7 @@ export class PatientorApi extends HttpApi.make("patientor")
       title: "Patientor API",
       version: "1.0.0",
     }),
-  )
-{}
+  ) {}
 ```
 
 ## 3. Implement Diagnoses First
@@ -315,21 +303,16 @@ import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
 import { PatientorApi } from "../http/api.js";
 import { getDiagnoses } from "./service.js";
 
-export const DiagnosesApiLive = HttpApiBuilder.group(
-  PatientorApi,
-  "diagnoses",
-  (handlers) =>
-    handlers.handle("list", () =>
-      getDiagnoses.pipe(
-        Effect.catchTag("DiagnosisReadError", (error) =>
-          Effect.logError(error).pipe(
-            Effect.flatMap(() =>
-              Effect.fail(new HttpApiError.InternalServerError({})),
-            ),
-          ),
+export const DiagnosesApiLive = HttpApiBuilder.group(PatientorApi, "diagnoses", (handlers) =>
+  handlers.handle("list", () =>
+    getDiagnoses.pipe(
+      Effect.catchTag("DiagnosisReadError", (error) =>
+        Effect.logError(error).pipe(
+          Effect.flatMap(() => Effect.fail(new HttpApiError.InternalServerError({}))),
         ),
       ),
     ),
+  ),
 );
 ```
 
@@ -350,52 +333,43 @@ import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
 import { PatientorApi } from "../http/api.js";
 import { PatientRepository } from "./repository.js";
 
-export const PatientsApiLive = HttpApiBuilder.group(
-  PatientorApi,
-  "patients",
-  (handlers) =>
-    handlers
-      .handle("list", () =>
-        Effect.gen(function* () {
-          const patients = yield* PatientRepository;
-          return yield* patients.findNonSensitive();
-        }).pipe(
-          Effect.catchTag("PatientReadError", (error) =>
-            Effect.logError(error).pipe(
-              Effect.flatMap(() =>
-                Effect.fail(new HttpApiError.InternalServerError({})),
-              ),
-            ),
-          ),
-        ),
-      )
-      .handle("get", ({ params }) =>
-        Effect.gen(function* () {
-          const patients = yield* PatientRepository;
-          const patient = yield* patients.findNonSensitiveById(params.id);
-
-          if (!patient) {
-            return yield* Effect.fail(new HttpApiError.NotFound({}));
-          }
-
-          return patient;
-        }).pipe(
-          Effect.catchTag("PatientReadError", (error) =>
-            Effect.logError(error).pipe(
-              Effect.flatMap(() =>
-                Effect.fail(new HttpApiError.InternalServerError({})),
-              ),
-            ),
-          ),
-          Effect.catchTag("InvalidPatientEntry", (error) =>
-            Effect.logError(error).pipe(
-              Effect.flatMap(() =>
-                Effect.fail(new HttpApiError.InternalServerError({})),
-              ),
-            ),
+export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (handlers) =>
+  handlers
+    .handle("list", () =>
+      Effect.gen(function* () {
+        const patients = yield* PatientRepository;
+        return yield* patients.findNonSensitive();
+      }).pipe(
+        Effect.catchTag("PatientReadError", (error) =>
+          Effect.logError(error).pipe(
+            Effect.flatMap(() => Effect.fail(new HttpApiError.InternalServerError({}))),
           ),
         ),
       ),
+    )
+    .handle("get", ({ params }) =>
+      Effect.gen(function* () {
+        const patients = yield* PatientRepository;
+        const patient = yield* patients.findNonSensitiveById(params.id);
+
+        if (!patient) {
+          return yield* Effect.fail(new HttpApiError.NotFound({}));
+        }
+
+        return patient;
+      }).pipe(
+        Effect.catchTag("PatientReadError", (error) =>
+          Effect.logError(error).pipe(
+            Effect.flatMap(() => Effect.fail(new HttpApiError.InternalServerError({}))),
+          ),
+        ),
+        Effect.catchTag("InvalidPatientEntry", (error) =>
+          Effect.logError(error).pipe(
+            Effect.flatMap(() => Effect.fail(new HttpApiError.InternalServerError({}))),
+          ),
+        ),
+      ),
+    ),
 );
 ```
 
@@ -473,10 +447,8 @@ import { Effect } from "effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { PatientorApi } from "./api.js";
 
-export const HealthApiLive = HttpApiBuilder.group(
-  PatientorApi,
-  "health",
-  (handlers) => handlers.handle("ping", () => Effect.succeed("pong")),
+export const HealthApiLive = HttpApiBuilder.group(PatientorApi, "health", (handlers) =>
+  handlers.handle("ping", () => Effect.succeed("pong")),
 );
 ```
 
@@ -496,13 +468,7 @@ import { HealthApiLive } from "./health-api.js";
 
 export const HttpRoutes = HttpApiBuilder.layer(PatientorApi, {
   openapiPath: "/openapi.json",
-}).pipe(
-  Layer.provide([
-    DiagnosesApiLive,
-    PatientsApiLive,
-    HealthApiLive,
-  ]),
-);
+}).pipe(Layer.provide([DiagnosesApiLive, PatientsApiLive, HealthApiLive]));
 ```
 
 The current server shape can stay close to the existing `HttpRouter.serve(...)`
@@ -524,9 +490,7 @@ const NodeServerLive = Layer.effect(HttpServer.HttpServer)(
   }),
 ).pipe(Layer.provide(NodeHttpServer.layerHttpServices));
 
-export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(
-  Layer.provide(NodeServerLive),
-);
+export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(Layer.provide(NodeServerLive));
 ```
 
 That is intentionally close to the current server file. If `HttpRoutes` is now
@@ -570,18 +534,15 @@ it.effect("does not expose ssn in patient list", () =>
 it.effect("returns 201 when adding a patient entry", () =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient;
-    const response = yield* client.post(
-      `/api/patients/${patientId}/entries`,
-      {
-        body: HttpBody.jsonUnsafe({
-          type: "HealthCheck",
-          description: "Annual check",
-          date: "2026-05-12",
-          specialist: "Dr. Smith",
-          healthCheckRating: 0,
-        }),
-      },
-    );
+    const response = yield* client.post(`/api/patients/${patientId}/entries`, {
+      body: HttpBody.jsonUnsafe({
+        type: "HealthCheck",
+        description: "Annual check",
+        date: "2026-05-12",
+        specialist: "Dr. Smith",
+        healthCheckRating: 0,
+      }),
+    });
 
     assert.strictEqual(response.status, 201);
   }).pipe(Effect.provide(TestServerLive)),

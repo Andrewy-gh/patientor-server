@@ -4,9 +4,7 @@ import { Pool } from "pg";
 import { AppConfigService } from "../config.js";
 import { DB } from "./generated.js";
 
-export class Database extends Context.Service<Database, Kysely<DB>>()(
-  "Database",
-) {}
+export class Database extends Context.Service<Database, Kysely<DB>>()("Database") {}
 
 const makeDatabase = Effect.gen(function* () {
   const config = yield* AppConfigService;

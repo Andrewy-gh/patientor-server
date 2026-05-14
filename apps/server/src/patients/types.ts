@@ -44,10 +44,7 @@ interface HealthCheckEntry extends BaseEntry {
   healthCheckRating: HealthCheckRating;
 }
 
-export type Entry =
-  | HospitalEntry
-  | OccupationalHealthcareEntry
-  | HealthCheckEntry;
+export type Entry = HospitalEntry | OccupationalHealthcareEntry | HealthCheckEntry;
 
 export type NewEntryInput = Entry extends infer E
   ? E extends Entry
@@ -65,9 +62,8 @@ export interface Patient {
   entries?: Entry[];
 }
 
-export type NewPatientInput = Omit<
-  Patients,
-  "id" | "created_at" | "date_of_birth"
-> & { dateOfBirth: string };
+export type NewPatientInput = Omit<Patients, "id" | "created_at" | "date_of_birth"> & {
+  dateOfBirth: string;
+};
 
 export type NonSensitivePatient = Omit<Patient, "ssn" | "entries">;

@@ -15,11 +15,7 @@ export type Generated<T> =
     ? ColumnType<S, I | undefined, U>
     : ColumnType<T, T | undefined, T>;
 
-export type HealthCheckRating =
-  | "CriticalRisk"
-  | "Healthy"
-  | "HighRisk"
-  | "LowRisk";
+export type HealthCheckRating = "CriticalRisk" | "Healthy" | "HighRisk" | "LowRisk";
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 

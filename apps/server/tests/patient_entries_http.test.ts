@@ -1,11 +1,7 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, Layer, Stream } from "effect";
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpRouter,
-} from "effect/unstable/http";
+import { HttpClient, HttpClientRequest, HttpRouter } from "effect/unstable/http";
 import { Database } from "../src/db/database.js";
 import { HttpRoutes } from "../src/http/routes.js";
 import { PatientRepository } from "../src/patients/repository.js";
@@ -92,10 +88,9 @@ const postBody = (id: string, body: string) =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient;
     const request = HttpClientRequest.post(`/api/patients/${id}/entries`).pipe(
-      HttpClientRequest.bodyStream(
-        Stream.make(encoder.encode(body)),
-        { contentType: "application/json" },
-      ),
+      HttpClientRequest.bodyStream(Stream.make(encoder.encode(body)), {
+        contentType: "application/json",
+      }),
     );
     return yield* client.execute(request);
   });
@@ -222,33 +217,31 @@ describe("POST /api/patients/:id/entries", () => {
     }),
   );
 
-  it.effect(
-    "inserts and returns updated patient for OccupationalHealthcare entries",
-    () =>
-      Effect.gen(function* () {
-        const sickLeave = { startDate: "2026-05-11", endDate: "2026-05-13" };
-        const response = yield* postEntry(patientId, {
-          type: "OccupationalHealthcare",
-          description: "Workplace check",
-          date: "2026-05-11",
-          specialist: "Dr Work",
-          employerName: "ACME",
-          sickLeave,
-        }).pipe(Effect.provide(withServer(makePatientRepository())));
-        const body = (yield* response.json) as Record<string, unknown> & {
-          entries: Array<Record<string, unknown>>;
-        };
+  it.effect("inserts and returns updated patient for OccupationalHealthcare entries", () =>
+    Effect.gen(function* () {
+      const sickLeave = { startDate: "2026-05-11", endDate: "2026-05-13" };
+      const response = yield* postEntry(patientId, {
+        type: "OccupationalHealthcare",
+        description: "Workplace check",
+        date: "2026-05-11",
+        specialist: "Dr Work",
+        employerName: "ACME",
+        sickLeave,
+      }).pipe(Effect.provide(withServer(makePatientRepository())));
+      const body = (yield* response.json) as Record<string, unknown> & {
+        entries: Array<Record<string, unknown>>;
+      };
 
-        assert.strictEqual(response.status, 201);
-        assert.notProperty(body, "ssn");
-        assert.include(body.entries[0], {
-          type: "OccupationalHealthcare",
-          description: "Workplace check",
-          date: "2026-05-11",
-          specialist: "Dr Work",
-          employerName: "ACME",
-        });
-        assert.deepEqual(body.entries[0]?.sickLeave, sickLeave);
-      }),
+      assert.strictEqual(response.status, 201);
+      assert.notProperty(body, "ssn");
+      assert.include(body.entries[0], {
+        type: "OccupationalHealthcare",
+        description: "Workplace check",
+        date: "2026-05-11",
+        specialist: "Dr Work",
+        employerName: "ACME",
+      });
+      assert.deepEqual(body.entries[0]?.sickLeave, sickLeave);
+    }),
   );
 });

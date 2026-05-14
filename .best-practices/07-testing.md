@@ -33,9 +33,7 @@ it.effect("returns diagnoses without empty latin fields", () =>
       selectFrom: () => ({
         select: () => ({
           orderBy: () => ({
-            execute: async () => [
-              { code: "A01", name: "Typhoid fever", latin: null },
-            ],
+            execute: async () => [{ code: "A01", name: "Typhoid fever", latin: null }],
           }),
         }),
       }),
@@ -45,9 +43,7 @@ it.effect("returns diagnoses without empty latin fields", () =>
       Effect.provide(Layer.succeed(Database)(fakeDb as never)),
     );
 
-    assert.deepStrictEqual(result, [
-      { code: "A01", name: "Typhoid fever" },
-    ]);
+    assert.deepStrictEqual(result, [{ code: "A01", name: "Typhoid fever" }]);
   }),
 );
 ```
@@ -100,9 +96,7 @@ it.effect("maps database failures to PatientReadError", () =>
     };
 
     const result = yield* Effect.exit(
-      getNonSensitivePatients.pipe(
-        Effect.provide(Layer.succeed(Database)(fakeDb as never)),
-      ),
+      getNonSensitivePatients.pipe(Effect.provide(Layer.succeed(Database)(fakeDb as never))),
     );
 
     assert.isTrue(Exit.isFailure(result));

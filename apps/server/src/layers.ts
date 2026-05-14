@@ -5,6 +5,4 @@ import { PatientRepositoryLive } from "./patients/repository.js";
 
 const DatabaseLayer = DatabaseLive.pipe(Layer.provideMerge(AppConfigLive));
 
-export const AppLive = PatientRepositoryLive.pipe(
-  Layer.provideMerge(DatabaseLayer),
-);
+export const AppLive = PatientRepositoryLive.pipe(Layer.provideMerge(DatabaseLayer));

@@ -28,8 +28,7 @@ That is good for a first pass. Prefer `Effect.logError` over `Console.error` as 
 import { HttpServerError } from "effect/unstable/http";
 
 const isRequestParseError = (error: unknown) =>
-  HttpServerError.isHttpServerError(error) &&
-  error.reason._tag === "RequestParseError";
+  HttpServerError.isHttpServerError(error) && error.reason._tag === "RequestParseError";
 
 const route = HttpRouter.route(
   "POST",
@@ -76,7 +75,7 @@ For detail endpoints, either return `undefined` and let the route choose `404`, 
 Current style:
 
 ```ts
-const patient = yield* getNonSensitivePatient(id);
+const patient = yield * getNonSensitivePatient(id);
 
 if (!patient) {
   return HttpServerResponse.empty({ status: 404 });
@@ -86,11 +85,11 @@ if (!patient) {
 Effect-native alternative:
 
 ```ts
-const patient = yield* getNonSensitivePatientOrFail(id).pipe(
-  Effect.catchTag("PatientNotFound", () =>
-    Effect.succeed(undefined),
-  ),
-);
+const patient =
+  yield *
+  getNonSensitivePatientOrFail(id).pipe(
+    Effect.catchTag("PatientNotFound", () => Effect.succeed(undefined)),
+  );
 
 if (!patient) {
   return HttpServerResponse.empty({ status: 404 });
@@ -104,11 +103,7 @@ For Patientor, current `undefined` style is fine. Use tagged `PatientNotFound` w
 Keep feature route arrays local:
 
 ```ts
-export const PatientHttpRoutes = [
-  patientsRoute,
-  patientRoute,
-  addPatientRoute,
-];
+export const PatientHttpRoutes = [patientsRoute, patientRoute, addPatientRoute];
 ```
 
 Then compose once:

@@ -2,12 +2,7 @@ import { Context, Data, Effect, Layer } from "effect";
 import { Kysely, Selectable } from "kysely";
 import { v1 as uuid } from "uuid";
 import { Database } from "../db/database.js";
-import {
-  DB,
-  Entries,
-  Gender,
-  HealthCheckRating as DbHealthCheckRating,
-} from "../db/generated.js";
+import { DB, Entries, Gender, HealthCheckRating as DbHealthCheckRating } from "../db/generated.js";
 import {
   Entry,
   HealthCheckRating,
@@ -56,23 +51,15 @@ export class PatientRepository extends Context.Service<
     readonly addEntry: (
       patientId: string,
       entry: NewEntryInput,
-    ) => Effect.Effect<
-      PatientWithEntries | undefined,
-      PatientWriteError | InvalidPatientEntry
-    >;
-    readonly addPatient: (
-      patient: NewPatientInput,
-    ) => Effect.Effect<Patient, PatientWriteError>;
+    ) => Effect.Effect<PatientWithEntries | undefined, PatientWriteError | InvalidPatientEntry>;
+    readonly addPatient: (patient: NewPatientInput) => Effect.Effect<Patient, PatientWriteError>;
     readonly findNonSensitive: () => Effect.Effect<
       ReadonlyArray<NonSensitivePatient>,
       PatientReadError
     >;
     readonly findNonSensitiveById: (
       id: string,
-    ) => Effect.Effect<
-      PatientWithEntries | undefined,
-      PatientReadError | InvalidPatientEntry
-    >;
+    ) => Effect.Effect<PatientWithEntries | undefined, PatientReadError | InvalidPatientEntry>;
   }
 >()("PatientRepository") {}
 
@@ -96,10 +83,7 @@ const findNonSensitive = Effect.fnUntraced(function* (db: Kysely<DB>) {
   }));
 });
 
-const findNonSensitiveById = Effect.fnUntraced(function* (
-  db: Kysely<DB>,
-  id: string,
-) {
+const findNonSensitiveById = Effect.fnUntraced(function* (db: Kysely<DB>, id: string) {
   const patient = yield* Effect.tryPromise({
     try: () =>
       db
@@ -116,12 +100,7 @@ const findNonSensitiveById = Effect.fnUntraced(function* (
 
   const entries = yield* Effect.tryPromise({
     try: () =>
-      db
-        .selectFrom("entries")
-        .selectAll()
-        .where("patient_id", "=", id)
-        .orderBy("date")
-        .execute(),
+      db.selectFrom("entries").selectAll().where("patient_id", "=", id).orderBy("date").execute(),
     catch: (cause) => new PatientReadError({ cause }),
   });
 
@@ -137,10 +116,7 @@ const findNonSensitiveById = Effect.fnUntraced(function* (
   };
 });
 
-const addPatient = Effect.fnUntraced(function* (
-  db: Kysely<DB>,
-  patient: NewPatientInput,
-) {
+const addPatient = Effect.fnUntraced(function* (db: Kysely<DB>, patient: NewPatientInput) {
   const newPatient = {
     id: uuid(),
     ...patient,
@@ -196,22 +172,12 @@ const addEntry = Effect.fnUntraced(function* (
             type: entry.type,
             specialist: entry.specialist,
             description: entry.description,
-            diagnosis_codes: entry.diagnosisCodes
-              ? [...entry.diagnosisCodes]
-              : null,
+            diagnosis_codes: entry.diagnosisCodes ? [...entry.diagnosisCodes] : null,
             health_check_rating:
-              entry.type === "HealthCheck"
-                ? dbHealthCheckRatings[entry.healthCheckRating]
-                : null,
+              entry.type === "HealthCheck" ? dbHealthCheckRatings[entry.healthCheckRating] : null,
             discharge: entry.type === "Hospital" ? entry.discharge : null,
-            employer_name:
-              entry.type === "OccupationalHealthcare"
-                ? entry.employerName
-                : null,
-            sick_leave:
-              entry.type === "OccupationalHealthcare"
-                ? entry.sickLeave ?? null
-                : null,
+            employer_name: entry.type === "OccupationalHealthcare" ? entry.employerName : null,
+            sick_leave: entry.type === "OccupationalHealthcare" ? (entry.sickLeave ?? null) : null,
           })
           .execute();
 
@@ -252,15 +218,12 @@ export const PatientRepositoryLive = Layer.effect(
       addPatient: (patient: NewPatientInput) => addPatient(db, patient),
       findNonSensitive: () => findNonSensitive(db),
       findNonSensitiveById: (id: string) => findNonSensitiveById(db, id),
-      addEntry: (patientId: string, entry: NewEntryInput) =>
-        addEntry(db, patientId, entry),
+      addEntry: (patientId: string, entry: NewEntryInput) => addEntry(db, patientId, entry),
     };
   }),
 );
 
-export const toEntry = (
-  entry: EntryRow,
-): Effect.Effect<Entry, InvalidPatientEntry> => {
+export const toEntry = (entry: EntryRow): Effect.Effect<Entry, InvalidPatientEntry> => {
   const baseEntry = {
     id: entry.id,
     date: entry.date,
@@ -313,7 +276,7 @@ export const toEntry = (
       return Effect.fail(
         new InvalidPatientEntry({
           entryId: entry.id,
-          reason: `Unknown entry type: ${entry.type}`,
+          reason: `Unknown entry type: ${(entry as EntryRow).type}`,
         }),
       );
   }

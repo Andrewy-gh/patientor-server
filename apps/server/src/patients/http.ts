@@ -8,8 +8,7 @@ import {
 import { PatientRepository } from "./repository.js";
 
 const isRequestParseError = (error: unknown) =>
-  HttpServerError.isHttpServerError(error) &&
-  error.reason._tag === "RequestParseError";
+  HttpServerError.isHttpServerError(error) && error.reason._tag === "RequestParseError";
 
 const patientsRoute = HttpRouter.route(
   "GET",
@@ -77,8 +76,7 @@ const isValidDateOnly = (value: string) => {
 
 const DateOnly = Schema.String.check(
   Schema.makeFilter<string>(
-    (value) =>
-      isValidDateOnly(value) || "Expected a valid date in YYYY-MM-DD format",
+    (value) => isValidDateOnly(value) || "Expected a valid date in YYYY-MM-DD format",
   ),
 );
 
@@ -86,11 +84,7 @@ const NewPatientInputSchema = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1)),
   dateOfBirth: DateOnly,
   ssn: Schema.String.check(Schema.isPattern(/^\d{6}-[A-Za-z0-9]{3,4}$/)),
-  gender: Schema.Union([
-    Schema.Literal("female"),
-    Schema.Literal("male"),
-    Schema.Literal("other"),
-  ]),
+  gender: Schema.Union([Schema.Literal("female"), Schema.Literal("male"), Schema.Literal("other")]),
   occupation: Schema.String.check(Schema.isMinLength(1)),
 });
 
@@ -98,9 +92,7 @@ const addPatientRoute = HttpRouter.route(
   "POST",
   "/api/patients",
   Effect.gen(function* () {
-    const newPatient = yield* HttpServerRequest.schemaBodyJson(
-      NewPatientInputSchema,
-    );
+    const newPatient = yield* HttpServerRequest.schemaBodyJson(NewPatientInputSchema);
     const patients = yield* PatientRepository;
 
     const addedPatient = yield* patients.addPatient(newPatient);
@@ -166,9 +158,7 @@ const addPatientEntryRoute = HttpRouter.route(
   "/api/patients/:id/entries",
   Effect.gen(function* () {
     const { id } = yield* HttpRouter.schemaPathParams(PatientPathParams);
-    const newEntry = yield* HttpServerRequest.schemaBodyJson(
-      NewEntryInputSchema,
-    );
+    const newEntry = yield* HttpServerRequest.schemaBodyJson(NewEntryInputSchema);
     const patients = yield* PatientRepository;
 
     const patient = yield* patients.addEntry(id, newEntry);

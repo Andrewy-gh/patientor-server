@@ -13,9 +13,7 @@ import { Pool } from "pg";
 import { AppConfigService } from "../config.js";
 import { DB } from "./generated.js";
 
-export class Database extends Context.Service<Database, Kysely<DB>>()(
-  "Database",
-) {}
+export class Database extends Context.Service<Database, Kysely<DB>>()("Database") {}
 
 export const DatabaseLive = Layer.effect(Database)(
   Effect.gen(function* () {
@@ -48,15 +46,17 @@ This is exactly the right Patientor pattern because:
 Wrap promise-returning Kysely calls with `Effect.tryPromise` and map failures into domain errors:
 
 ```ts
-const patients = yield* Effect.tryPromise({
-  try: () =>
-    db
-      .selectFrom("patients")
-      .select(["id", "name", "date_of_birth", "gender", "occupation"])
-      .orderBy("name")
-      .execute(),
-  catch: (cause) => new PatientReadError({ cause }),
-});
+const patients =
+  yield *
+  Effect.tryPromise({
+    try: () =>
+      db
+        .selectFrom("patients")
+        .select(["id", "name", "date_of_birth", "gender", "occupation"])
+        .orderBy("name")
+        .execute(),
+    catch: (cause) => new PatientReadError({ cause }),
+  });
 ```
 
 Do not hide Kysely behind a generic repository unless the duplication becomes real. Right now, direct typed queries are clearer.
@@ -94,14 +94,17 @@ const addPatientWithEntries = Effect.fnUntraced(function* (input: NewPatientInpu
       db.transaction().execute(async (trx) => {
         const patientId = uuid();
 
-        await trx.insertInto("patients").values({
-          id: patientId,
-          name: input.name,
-          date_of_birth: input.dateOfBirth,
-          ssn: input.ssn,
-          gender: input.gender as Gender,
-          occupation: input.occupation,
-        }).execute();
+        await trx
+          .insertInto("patients")
+          .values({
+            id: patientId,
+            name: input.name,
+            date_of_birth: input.dateOfBirth,
+            ssn: input.ssn,
+            gender: input.gender as Gender,
+            occupation: input.occupation,
+          })
+          .execute();
 
         return { id: patientId, ...input, entries: [] };
       }),

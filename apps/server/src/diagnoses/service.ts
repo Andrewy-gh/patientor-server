@@ -10,11 +10,7 @@ export const getDiagnoses = Effect.gen(function* () {
 
   const diagnoses = yield* Effect.tryPromise({
     try: () =>
-      db
-        .selectFrom("diagnoses")
-        .select(["code", "name", "latin"])
-        .orderBy("code")
-        .execute(),
+      db.selectFrom("diagnoses").select(["code", "name", "latin"]).orderBy("code").execute(),
     catch: (cause) => new DiagnosisReadError({ cause }),
   });
 

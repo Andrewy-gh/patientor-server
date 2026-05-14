@@ -10,10 +10,10 @@ import { DB } from "./generated.js";
 import { Gender, HealthCheckRating } from "./generated.js";
 
 const healthCheckRatings: Record<ApiHealthCheckRating, HealthCheckRating> = {
-  [ApiHealthCheckRating.Healthy]: 'Healthy',
-  [ApiHealthCheckRating.LowRisk]: 'LowRisk',
-  [ApiHealthCheckRating.HighRisk]: 'HighRisk',
-  [ApiHealthCheckRating.CriticalRisk]: 'CriticalRisk',
+  [ApiHealthCheckRating.Healthy]: "Healthy",
+  [ApiHealthCheckRating.LowRisk]: "LowRisk",
+  [ApiHealthCheckRating.HighRisk]: "HighRisk",
+  [ApiHealthCheckRating.CriticalRisk]: "CriticalRisk",
 };
 
 const insertSeedData = (db: Kysely<DB>) =>
@@ -64,16 +64,10 @@ const insertSeedData = (db: Kysely<DB>) =>
             ? sql<string[]>`ARRAY[${sql.join(entry.diagnosisCodes)}]::text[]`
             : null,
           health_check_rating:
-            entry.type === "HealthCheck"
-              ? healthCheckRatings[entry.healthCheckRating]
-              : null,
+            entry.type === "HealthCheck" ? healthCheckRatings[entry.healthCheckRating] : null,
           discharge: entry.type === "Hospital" ? entry.discharge : null,
-          employer_name:
-            entry.type === "OccupationalHealthcare" ? entry.employerName : null,
-          sick_leave:
-            entry.type === "OccupationalHealthcare"
-              ? entry.sickLeave ?? null
-              : null,
+          employer_name: entry.type === "OccupationalHealthcare" ? entry.employerName : null,
+          sick_leave: entry.type === "OccupationalHealthcare" ? (entry.sickLeave ?? null) : null,
         })),
       );
 
@@ -94,9 +88,6 @@ const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), {
   asPrimary: true,
 });
 
-const MainLive = AppLive.pipe(
-  Layer.provide(DotEnvLive),
-  Layer.provide(NodeServices.layer),
-);
+const MainLive = AppLive.pipe(Layer.provide(DotEnvLive), Layer.provide(NodeServices.layer));
 
 seed.pipe(Effect.provide(MainLive), NodeRuntime.runMain);

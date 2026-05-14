@@ -47,45 +47,43 @@ const createEnumTypes = (db: Kysely<DB>) =>
 const createTables = (db: Kysely<DB>) =>
   Effect.promise(async () => {
     await db.schema
-    .createTable('diagnoses')
-    .ifNotExists()
-    .addColumn('code', 'varchar(16)', (column) => column.primaryKey())
-    .addColumn('name', 'text', (column) => column.notNull())
-    .addColumn('latin', 'text')
-    .execute();
+      .createTable("diagnoses")
+      .ifNotExists()
+      .addColumn("code", "varchar(16)", (column) => column.primaryKey())
+      .addColumn("name", "text", (column) => column.notNull())
+      .addColumn("latin", "text")
+      .execute();
 
     await db.schema
-    .createTable('patients')
-    .ifNotExists()
-    .addColumn('id', 'uuid', (column) => column.primaryKey())
-    .addColumn('name', 'text', (column) => column.notNull())
-    .addColumn('date_of_birth', 'date', (column) => column.notNull())
-    .addColumn('ssn', 'text', (column) => column.notNull())
-    .addColumn('gender', sql`gender`, (column) => column.notNull())
-    .addColumn('occupation', 'text', (column) => column.notNull())
-    .addColumn('created_at', 'timestamp', (column) =>
-      column.notNull().defaultTo(sql`now()`)
-    )
-    .execute();
+      .createTable("patients")
+      .ifNotExists()
+      .addColumn("id", "uuid", (column) => column.primaryKey())
+      .addColumn("name", "text", (column) => column.notNull())
+      .addColumn("date_of_birth", "date", (column) => column.notNull())
+      .addColumn("ssn", "text", (column) => column.notNull())
+      .addColumn("gender", sql`gender`, (column) => column.notNull())
+      .addColumn("occupation", "text", (column) => column.notNull())
+      .addColumn("created_at", "timestamp", (column) => column.notNull().defaultTo(sql`now()`))
+      .execute();
 
     await db.schema
-    .createTable('entries')
-    .ifNotExists()
-    .addColumn('row_id', 'serial', (column) => column.primaryKey())
-    .addColumn('id', 'uuid', (column) => column.notNull())
-    .addColumn('patient_id', 'uuid', (column) =>
-      column.notNull().references('patients.id').onDelete('cascade')
-    )
-    .addColumn('date', 'date', (column) => column.notNull())
-    .addColumn('type', sql`entry_type`, (column) => column.notNull())
-    .addColumn('specialist', 'text', (column) => column.notNull())
-    .addColumn('description', 'text', (column) => column.notNull())
-    .addColumn('diagnosis_codes', sql`text[]`)
-    .addColumn('health_check_rating', sql`health_check_rating`)
-    .addColumn('discharge', 'jsonb')
-    .addColumn('employer_name', 'text')
-    .addColumn('sick_leave', 'jsonb')
-    .execute();
+      .createTable("entries")
+      .ifNotExists()
+      .addColumn("row_id", "serial", (column) => column.primaryKey())
+      .addColumn("id", "uuid", (column) => column.notNull())
+      .addColumn("patient_id", "uuid", (column) =>
+        column.notNull().references("patients.id").onDelete("cascade"),
+      )
+      .addColumn("date", "date", (column) => column.notNull())
+      .addColumn("type", sql`entry_type`, (column) => column.notNull())
+      .addColumn("specialist", "text", (column) => column.notNull())
+      .addColumn("description", "text", (column) => column.notNull())
+      .addColumn("diagnosis_codes", sql`text[]`)
+      .addColumn("health_check_rating", sql`health_check_rating`)
+      .addColumn("discharge", "jsonb")
+      .addColumn("employer_name", "text")
+      .addColumn("sick_leave", "jsonb")
+      .execute();
   });
 
 const migrate = Effect.gen(function* () {
@@ -100,9 +98,6 @@ const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), {
   asPrimary: true,
 });
 
-const MainLive = AppLive.pipe(
-  Layer.provide(DotEnvLive),
-  Layer.provide(NodeServices.layer),
-);
+const MainLive = AppLive.pipe(Layer.provide(DotEnvLive), Layer.provide(NodeServices.layer));
 
 migrate.pipe(Effect.provide(MainLive), NodeRuntime.runMain);

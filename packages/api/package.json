@@ -1,0 +1,26 @@
+{
+  "name": "@patientor/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test --passWithNoTests",
+    "check": "vp check",
+    "typecheck": "vp check --no-fmt --no-lint"
+  },
+  "dependencies": {
+    "effect": "^4.0.0-beta.65"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

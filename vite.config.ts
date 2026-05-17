@@ -4,7 +4,9 @@ export default defineConfig({
   staged: {
     "*": "vp check --fix",
   },
-  fmt: {},
+  fmt: {
+    ignorePatterns: ["**/dist/**"],
+  },
   lint: { options: { typeAware: true, typeCheck: true } },
   run: {
     cache: true,

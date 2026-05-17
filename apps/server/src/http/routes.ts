@@ -1,11 +1,10 @@
-import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
-import { DiagnosisHttpRoutes } from "../diagnoses/http.js";
-import { PatientHttpRoutes } from "../patients/http.js";
+import { Layer } from "effect";
+import { HttpApiBuilder } from "effect/unstable/httpapi";
+import { PatientorApi } from "@patientor/api";
+import { DiagnosesApiLive } from "../diagnoses/api.js";
+import { PatientsApiLive } from "../patients/api.js";
+import { HealthApiLive } from "./health-api.js";
 
-const pingRoute = HttpRouter.route("GET", "/api/ping", HttpServerResponse.text("pong"));
-
-export const HttpRoutes = HttpRouter.addAll([
-  pingRoute,
-  ...DiagnosisHttpRoutes,
-  ...PatientHttpRoutes,
-]);
+export const HttpRoutes = HttpApiBuilder.layer(PatientorApi, {
+  openapiPath: "/openapi.json",
+}).pipe(Layer.provide([DiagnosesApiLive, PatientsApiLive, HealthApiLive]));

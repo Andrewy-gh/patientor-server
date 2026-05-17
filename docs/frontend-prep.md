@@ -96,6 +96,129 @@ The API shape should stay friendly to frontend code. The database shape should
 stay friendly to the database. The server repository is where those two shapes
 are translated.
 
+## How The Effect Server Is Composed
+
+The product behavior is simple: the server should start only when every required
+piece is available. That includes the public API handlers, database access,
+configuration, and the Node HTTP server. Effect makes that startup safety
+visible in types.
+
+For a team-friendly visual walkthrough, open
+`docs/effect-app-construction-presentation.html`. It covers the same model as a
+slide deck for both technical and non-technical reviewers.
+
+Think of the startup files as three different ownership layers:
+
+```text
+apps/server/src/layers.ts
+  owns app services: config, database, repositories
+
+apps/server/src/http/server.ts
+  owns HTTP runtime wiring: routes, Node server, HTTP platform services
+
+apps/server/src/index.ts
+  owns the executable boundary: .env, Node services, launch
+```
+
+In plain terms:
+
+1. `layers.ts` answers "what backend capabilities does Patientor need?"
+2. `server.ts` answers "how do those capabilities become an HTTP server?"
+3. `index.ts` answers "how does the process load config and start the app?"
+
+### `layers.ts`: App Capabilities
+
+`layers.ts` should compose domain and infrastructure services that feature code
+uses. For Patientor, that means the app config, database connection, and patient
+repository.
+
+This is the right kind of shape:
+
+```ts
+import { Layer } from "effect";
+import { AppConfigLive } from "./config.js";
+import { DatabaseLive } from "./db/database.js";
+import { PatientRepositoryLive } from "./patients/repository.js";
+
+const DatabaseLayer = DatabaseLive.pipe(Layer.provideMerge(AppConfigLive));
+
+export const AppLive = PatientRepositoryLive.pipe(Layer.provideMerge(DatabaseLayer));
+```
+
+Use `provideMerge` when the provided dependency should remain available to other
+parts of the app. Here, the database needs config, and the HTTP server also needs
+config so it can read the port.
+
+### `server.ts`: HTTP Runtime
+
+`server.ts` should take the route layer and provide the Node HTTP server pieces
+that Effect's HTTP runtime needs.
+
+Use the installed Effect package as the source of truth. In the current beta,
+the helper for turning an effect that returns a layer into a layer is
+`Layer.unwrap`.
+
+```ts
+import { NodeHttpServer } from "@effect/platform-node";
+import { Effect, Layer } from "effect";
+import { HttpRouter } from "effect/unstable/http";
+import { createServer } from "node:http";
+import { AppConfigService } from "../config.js";
+import { HttpRoutes } from "./routes.js";
+
+const NodeServerLive = Layer.unwrap(
+  Effect.gen(function* () {
+    const config = yield* AppConfigService;
+    return NodeHttpServer.layer(createServer, { port: config.port });
+  }),
+);
+
+export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(Layer.provide(NodeServerLive));
+```
+
+The important detail is that `NodeHttpServer.layer(...)` provides more than just
+the low-level server. It also provides the HTTP platform services that
+`HttpRouter.serve(...)` needs while handling requests and responses.
+
+Avoid building only `HttpServer.HttpServer` locally and hiding the rest of the
+Node HTTP services inside that private layer. If the outer router still needs
+`HttpPlatform` or `Generator`, `Layer.launch(...).pipe(NodeRuntime.runMain)` will
+fail typecheck because startup is not fully satisfied.
+
+### `index.ts`: Executable Boundary
+
+`index.ts` should stay small. It loads boundary-level services and launches the
+already-composed server.
+
+```ts
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { ConfigProvider, Layer } from "effect";
+import { HttpServerLive } from "./http/server.js";
+import { AppLive } from "./layers.js";
+
+const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), {
+  asPrimary: true,
+});
+
+const MainLive = HttpServerLive.pipe(
+  Layer.provide(AppLive),
+  Layer.provide(DotEnvLive),
+  Layer.provide(NodeServices.layer),
+);
+
+Layer.launch(MainLive).pipe(NodeRuntime.runMain);
+```
+
+This keeps the decision points clear:
+
+1. Add or change business services in `layers.ts`.
+2. Add or change HTTP serving behavior in `http/server.ts`.
+3. Add or change process startup concerns in `index.ts`.
+
+If a typecheck error appears in `index.ts`, it often means one of the lower
+layers still has an unmet requirement. Read the error as "the app cannot prove
+startup has everything it needs yet," then trace which service is still required.
+
 ## Step 0: Start From The Repo Root
 
 Run commands from the repository root:
@@ -654,6 +777,32 @@ What this means:
 4. Handler files will later refer to endpoint names like `"list"`, `"get"`,
    `"create"`, and `"addEntry"`.
 5. This is where generated OpenAPI documentation can get its route shapes.
+
+Error ownership note:
+
+`patientor-api.ts` declares which errors each endpoint may return. For example,
+`GET /patients/:id` and `POST /patients/:id/entries` both allow
+`HttpApiError.NotFound` and `HttpApiError.InternalServerError`.
+
+Those error classes are not defined by Patientor. They come from
+`effect/unstable/httpapi`. In plain terms, the API contract says "this endpoint
+can return a 404", while the server handler decides when to return it.
+
+In `Effect.gen` handlers, built-in HTTP API errors such as
+`HttpApiError.NotFound` are yieldable directly:
+
+```ts
+return yield * new HttpApiError.NotFound({});
+```
+
+Avoid wrapping that value in `Effect.fail(...)` inside a generator:
+
+```ts
+return yield * Effect.fail(new HttpApiError.NotFound({}));
+```
+
+That still describes the same product behavior, but Effect's language service
+warns because the error value can already be yielded directly.
 
 ### `packages/api/src/index.ts`
 

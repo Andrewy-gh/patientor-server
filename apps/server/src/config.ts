@@ -1,4 +1,4 @@
-import { Config, Context, Effect, Layer } from "effect";
+import { Config, Context, Layer } from "effect";
 
 export interface AppConfig {
   readonly port: number;
@@ -14,8 +14,4 @@ const appConfig = Config.all({
   nodeEnv: Config.string("NODE_ENV").pipe(Config.withDefault("development")),
 });
 
-const makeConfig = Effect.gen(function* () {
-  return yield* appConfig;
-});
-
-export const AppConfigLive = Layer.effect(AppConfigService)(makeConfig);
+export const AppConfigLive = Layer.effect(AppConfigService)(appConfig);

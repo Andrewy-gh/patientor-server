@@ -1,19 +1,19 @@
+import type { HealthCheckRating as ApiHealthCheckRating } from "@patientor/api";
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { ConfigProvider, Effect, Layer } from "effect";
 import { Kysely, sql } from "kysely";
 import { diagnoses } from "../../data/diagnoses.js";
 import patients from "../../data/patients.js";
 import { AppLive } from "../layers.js";
-import { HealthCheckRating as ApiHealthCheckRating } from "../patients/types.js";
 import { Database } from "./database.js";
 import { DB } from "./generated.js";
 import { Gender, HealthCheckRating } from "./generated.js";
 
 const healthCheckRatings: Record<ApiHealthCheckRating, HealthCheckRating> = {
-  [ApiHealthCheckRating.Healthy]: "Healthy",
-  [ApiHealthCheckRating.LowRisk]: "LowRisk",
-  [ApiHealthCheckRating.HighRisk]: "HighRisk",
-  [ApiHealthCheckRating.CriticalRisk]: "CriticalRisk",
+  0: "Healthy",
+  1: "LowRisk",
+  2: "HighRisk",
+  3: "CriticalRisk",
 };
 
 const insertSeedData = (db: Kysely<DB>) =>

@@ -1,35 +1,32 @@
-import { Context, Data, Effect, Layer } from "effect";
-import { Kysely, Selectable } from "kysely";
-import { v1 as uuid } from "uuid";
-import { Database } from "../db/database.js";
-import { DB, Entries, Gender, HealthCheckRating as DbHealthCheckRating } from "../db/generated.js";
-import {
+import type {
   Entry,
   HealthCheckRating,
   NewEntryInput,
   NewPatientInput,
   NonSensitivePatient,
+  NonSensitivePatientWithEntries,
   Patient,
-} from "./types.js";
+} from "@patientor/api";
+import { Context, Data, Effect, Layer } from "effect";
+import { Kysely, Selectable } from "kysely";
+import { v1 as uuid } from "uuid";
+import { Database } from "../db/database.js";
+import { DB, Entries, Gender, HealthCheckRating as DbHealthCheckRating } from "../db/generated.js";
 
 type EntryRow = Selectable<Entries>;
 
-type PatientWithEntries = NonSensitivePatient & {
-  readonly entries: Entry[];
-};
-
 const healthCheckRatings: Record<DbHealthCheckRating, HealthCheckRating> = {
-  Healthy: HealthCheckRating.Healthy,
-  LowRisk: HealthCheckRating.LowRisk,
-  HighRisk: HealthCheckRating.HighRisk,
-  CriticalRisk: HealthCheckRating.CriticalRisk,
+  Healthy: 0,
+  LowRisk: 1,
+  HighRisk: 2,
+  CriticalRisk: 3,
 };
 
 const dbHealthCheckRatings: Record<HealthCheckRating, DbHealthCheckRating> = {
-  [HealthCheckRating.Healthy]: "Healthy",
-  [HealthCheckRating.LowRisk]: "LowRisk",
-  [HealthCheckRating.HighRisk]: "HighRisk",
-  [HealthCheckRating.CriticalRisk]: "CriticalRisk",
+  0: "Healthy",
+  1: "LowRisk",
+  2: "HighRisk",
+  3: "CriticalRisk",
 };
 
 export class PatientReadError extends Data.TaggedClass("PatientReadError")<{
@@ -51,7 +48,10 @@ export class PatientRepository extends Context.Service<
     readonly addEntry: (
       patientId: string,
       entry: NewEntryInput,
-    ) => Effect.Effect<PatientWithEntries | undefined, PatientWriteError | InvalidPatientEntry>;
+    ) => Effect.Effect<
+      NonSensitivePatientWithEntries | undefined,
+      PatientWriteError | InvalidPatientEntry
+    >;
     readonly addPatient: (patient: NewPatientInput) => Effect.Effect<Patient, PatientWriteError>;
     readonly findNonSensitive: () => Effect.Effect<
       ReadonlyArray<NonSensitivePatient>,
@@ -59,7 +59,10 @@ export class PatientRepository extends Context.Service<
     >;
     readonly findNonSensitiveById: (
       id: string,
-    ) => Effect.Effect<PatientWithEntries | undefined, PatientReadError | InvalidPatientEntry>;
+    ) => Effect.Effect<
+      NonSensitivePatientWithEntries | undefined,
+      PatientReadError | InvalidPatientEntry
+    >;
   }
 >()("PatientRepository") {}
 
@@ -239,7 +242,7 @@ export const toEntry = (entry: EntryRow): Effect.Effect<Entry, InvalidPatientEnt
         type: "HealthCheck",
         healthCheckRating: entry.health_check_rating
           ? healthCheckRatings[entry.health_check_rating]
-          : HealthCheckRating.Healthy,
+          : 0,
       } satisfies Entry);
     case "Hospital":
       if (!entry.discharge) {

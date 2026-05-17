@@ -36,6 +36,9 @@ importers:
       '@effect/platform-node':
         specifier: ^4.0.0-beta.65
         version: 4.0.0-beta.66(effect@4.0.0-beta.66)(ioredis@5.10.1)
+      '@patientor/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2

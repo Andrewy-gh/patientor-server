@@ -1,69 +1,25 @@
-import { Patients } from "../db/generated.js";
-import type { Diagnosis } from "../diagnoses/types.js";
+import type {
+  Entry,
+  Gender as ApiGender,
+  NewEntryInput,
+  NewPatientInput,
+  NonSensitivePatient,
+  NonSensitivePatientWithEntries,
+  Patient,
+} from "@patientor/api";
+import type { Gender as DatabaseGender } from "../db/generated.js";
 
-export type { Gender } from "../db/generated.js";
+type AssertAssignable<Actual extends Expected, Expected> = Actual;
 
-interface BaseEntry {
-  id: string;
-  description: string;
-  date: string;
-  specialist: string;
-  diagnosisCodes?: ReadonlyArray<Diagnosis["code"]>;
-}
+export type GenderApiMatchesDatabase = AssertAssignable<ApiGender, DatabaseGender>;
+export type GenderDatabaseMatchesApi = AssertAssignable<DatabaseGender, ApiGender>;
 
-export enum HealthCheckRating {
-  "Healthy" = 0,
-  "LowRisk" = 1,
-  "HighRisk" = 2,
-  "CriticalRisk" = 3,
-}
-
-interface Discharge {
-  date: string;
-  criteria: string;
-}
-
-interface HospitalEntry extends BaseEntry {
-  type: "Hospital";
-  discharge: Discharge;
-}
-
-interface SickLeave {
-  startDate: string;
-  endDate: string;
-}
-
-interface OccupationalHealthcareEntry extends BaseEntry {
-  type: "OccupationalHealthcare";
-  employerName: string;
-  sickLeave?: SickLeave;
-}
-
-interface HealthCheckEntry extends BaseEntry {
-  type: "HealthCheck";
-  healthCheckRating: HealthCheckRating;
-}
-
-export type Entry = HospitalEntry | OccupationalHealthcareEntry | HealthCheckEntry;
-
-export type NewEntryInput = Entry extends infer E
-  ? E extends Entry
-    ? Omit<E, "id">
-    : never
-  : never;
-
-export interface Patient {
-  id: string;
-  name: string;
-  dateOfBirth: string;
-  ssn: string;
-  gender: string;
-  occupation: string;
-  entries?: Entry[];
-}
-
-export type NewPatientInput = Omit<Patients, "id" | "created_at" | "date_of_birth"> & {
-  dateOfBirth: string;
+export type {
+  Entry,
+  ApiGender as Gender,
+  NewEntryInput,
+  NewPatientInput,
+  NonSensitivePatient,
+  NonSensitivePatientWithEntries,
+  Patient,
 };
-
-export type NonSensitivePatient = Omit<Patient, "ssn" | "entries">;

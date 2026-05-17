@@ -9,7 +9,7 @@
   "main": "index.js",
   "scripts": {
     "tsc": "tsc",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vp check --no-fmt --no-lint",
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "db:migrate": "tsx src/db/migrate.ts",

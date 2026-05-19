@@ -1,7 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { ConfigProvider, Layer } from "effect";
-import { AppLive } from "./layers.js";
-import { HttpServerLive } from "./http/server.js";
+import { AppLive } from "./layers.ts";
+import { HttpServerLive } from "./http/server.ts";
 
 const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), {
   asPrimary: true,

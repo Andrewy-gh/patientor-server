@@ -10,14 +10,14 @@
   "scripts": {
     "tsc": "tsc",
     "typecheck": "vp check --no-fmt --no-lint",
-    "build": "tsc",
-    "dev": "tsx watch src/index.ts",
-    "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts",
+    "build": "tsc --project tsconfig.build.json",
+    "dev": "node --watch src/index.ts",
+    "db:migrate": "node src/db/migrate.ts",
+    "db:seed": "node src/db/seed.ts",
     "db:types": "kysely-codegen",
     "lint": "vp lint",
-    "start": "node build/index.js",
-    "test": "cross-env NODE_ENV=test vitest run"
+    "start": "node build/src/index.js",
+    "test": "cross-env NODE_ENV=test vp test"
   },
   "dependencies": {
     "@effect/platform-node": "^4.0.0-beta.65",
@@ -36,7 +36,6 @@
     "@types/uuid": "^9.0.7",
     "cross-env": "^10.1.0",
     "kysely-codegen": "^0.20.0",
-    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.5"
   }

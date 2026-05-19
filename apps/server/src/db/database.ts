@@ -1,8 +1,8 @@
 import { Context, Effect, Layer } from "effect";
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
-import { AppConfigService } from "../config.js";
-import { DB } from "./generated.js";
+import { AppConfigService } from "../config.ts";
+import type { DB } from "./generated.ts";
 
 export class Database extends Context.Service<Database, Kysely<DB>>()("Database") {}
 

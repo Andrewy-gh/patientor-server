@@ -4,11 +4,11 @@ import { Effect, Layer, Stream } from "effect";
 import { HttpClient, HttpClientRequest, HttpRouter } from "effect/unstable/http";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { Pool } from "pg";
-import { AppConfigService } from "../src/config.js";
-import { DatabaseLive } from "../src/db/database.js";
-import { DB } from "../src/db/generated.js";
-import { HttpRoutes } from "../src/http/routes.js";
-import { PatientRepositoryLive } from "../src/patients/repository.js";
+import { AppConfigService } from "../src/config.ts";
+import { DatabaseLive } from "../src/db/database.ts";
+import type { DB } from "../src/db/generated.ts";
+import { HttpRoutes } from "../src/http/routes.ts";
+import { PatientRepositoryLive } from "../src/patients/repository.ts";
 
 const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const describeIfDb = databaseUrl ? describe : describe.skip;

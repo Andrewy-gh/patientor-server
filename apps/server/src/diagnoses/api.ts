@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
 import { PatientorApi } from "@patientor/api";
-import { getDiagnoses } from "./service.js";
+import { getDiagnoses } from "./service.ts";
 
 export const DiagnosesApiLive = HttpApiBuilder.group(PatientorApi, "diagnoses", (handlers) =>
   handlers.handle("list", () =>

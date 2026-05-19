@@ -6,7 +6,7 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "effect/unstable/http";
-import { PatientRepository } from "./repository.js";
+import { PatientRepository } from "./repository.ts";
 
 const isRequestParseError = (error: unknown) =>
   HttpServerError.isHttpServerError(error) && error.reason._tag === "RequestParseError";

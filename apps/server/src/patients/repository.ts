@@ -8,10 +8,15 @@ import type {
   Patient,
 } from "@patientor/api";
 import { Context, Data, Effect, Layer } from "effect";
-import { Kysely, Selectable } from "kysely";
+import type { Kysely, Selectable } from "kysely";
 import { v1 as uuid } from "uuid";
-import { Database } from "../db/database.js";
-import { DB, Entries, Gender, HealthCheckRating as DbHealthCheckRating } from "../db/generated.js";
+import { Database } from "../db/database.ts";
+import type {
+  DB,
+  Entries,
+  Gender,
+  HealthCheckRating as DbHealthCheckRating,
+} from "../db/generated.ts";
 
 type EntryRow = Selectable<Entries>;
 

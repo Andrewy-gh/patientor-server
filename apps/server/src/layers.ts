@@ -1,7 +1,7 @@
 import { Layer } from "effect";
-import { AppConfigLive } from "./config.js";
-import { DatabaseLive } from "./db/database.js";
-import { PatientRepositoryLive } from "./patients/repository.js";
+import { AppConfigLive } from "./config.ts";
+import { DatabaseLive } from "./db/database.ts";
+import { PatientRepositoryLive } from "./patients/repository.ts";
 
 const DatabaseLayer = DatabaseLive.pipe(Layer.provideMerge(AppConfigLive));
 

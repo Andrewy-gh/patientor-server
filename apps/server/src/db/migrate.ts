@@ -1,9 +1,10 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { ConfigProvider, Effect, Layer } from "effect";
-import { Kysely, sql } from "kysely";
-import { AppLive } from "../layers.js";
-import { Database } from "./database.js";
-import { DB } from "./generated.js";
+import { sql } from "kysely";
+import type { Kysely } from "kysely";
+import { AppLive } from "../layers.ts";
+import { Database } from "./database.ts";
+import type { DB } from "./generated.ts";
 
 const createEnumTypes = (db: Kysely<DB>) =>
   Effect.promise(async () => {

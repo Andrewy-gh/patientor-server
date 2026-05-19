@@ -2,15 +2,15 @@ import { NodeHttpServer } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, Layer, Stream } from "effect";
 import { HttpClient, HttpClientRequest, HttpRouter } from "effect/unstable/http";
-import { Database } from "../src/db/database.js";
-import { HttpRoutes } from "../src/http/routes.js";
-import { PatientRepository } from "../src/patients/repository.js";
+import { Database } from "../src/db/database.ts";
+import { HttpRoutes } from "../src/http/routes.ts";
+import { PatientRepository } from "../src/patients/repository.ts";
 import {
   Entry,
   NewEntryInput,
   NewPatientInput,
   NonSensitivePatient,
-} from "../src/patients/types.js";
+} from "../src/patients/types.ts";
 
 const patientId = "11111111-1111-4111-8111-111111111111";
 const missingPatientId = "22222222-2222-4222-8222-222222222222";

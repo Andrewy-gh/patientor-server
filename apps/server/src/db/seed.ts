@@ -1,13 +1,13 @@
 import type { HealthCheckRating as ApiHealthCheckRating } from "@patientor/api";
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { ConfigProvider, Effect, Layer } from "effect";
-import { Kysely, sql } from "kysely";
-import { diagnoses } from "../../data/diagnoses.js";
-import patients from "../../data/patients.js";
-import { AppLive } from "../layers.js";
-import { Database } from "./database.js";
-import { DB } from "./generated.js";
-import { Gender, HealthCheckRating } from "./generated.js";
+import { sql } from "kysely";
+import type { Kysely } from "kysely";
+import { diagnoses } from "../../data/diagnoses.ts";
+import patients from "../../data/patients.ts";
+import { AppLive } from "../layers.ts";
+import { Database } from "./database.ts";
+import type { DB, Gender, HealthCheckRating } from "./generated.ts";
 
 const healthCheckRatings: Record<ApiHealthCheckRating, HealthCheckRating> = {
   0: "Healthy",

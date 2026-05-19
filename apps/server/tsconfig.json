@@ -9,6 +9,7 @@
     ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "rewriteRelativeImportExtensions": true,
     "outDir": "./build",
     "types": ["node", "vitest/globals"],
     "esModuleInterop": true,

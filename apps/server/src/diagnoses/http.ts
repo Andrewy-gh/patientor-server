@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
-import { getDiagnoses } from "./service.js";
+import { getDiagnoses } from "./service.ts";
 
 const diagnosesRoute = HttpRouter.route(
   "GET",

@@ -1,5 +1,5 @@
 import { Data, Effect } from "effect";
-import { Database } from "../db/database.js";
+import { Database } from "../db/database.ts";
 
 export class DiagnosisReadError extends Data.TaggedClass("DiagnosisReadError")<{
   readonly cause: unknown;

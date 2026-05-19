@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
 import { PatientorApi } from "@patientor/api";
-import { PatientRepository } from "./repository.js";
+import { PatientRepository } from "./repository.ts";
 
 const internalServerError = (error: unknown) =>
   Effect.logError(error).pipe(

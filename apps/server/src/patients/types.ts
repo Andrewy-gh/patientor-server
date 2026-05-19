@@ -7,7 +7,7 @@ import type {
   NonSensitivePatientWithEntries,
   Patient,
 } from "@patientor/api";
-import type { Gender as DatabaseGender } from "../db/generated.js";
+import type { Gender as DatabaseGender } from "../db/generated.ts";
 
 type AssertAssignable<Actual extends Expected, Expected> = Actual;
 

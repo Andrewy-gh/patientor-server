@@ -34,6 +34,18 @@ const dbHealthCheckRatings: Record<HealthCheckRating, DbHealthCheckRating> = {
   3: "CriticalRisk",
 };
 
+const toDateOnly = (value: string | Date) => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 export class PatientReadError extends Data.TaggedClass("PatientReadError")<{
   readonly cause: unknown;
 }> {}
@@ -85,7 +97,7 @@ const findNonSensitive = Effect.fnUntraced(function* (db: Kysely<DB>) {
   return patients.map(({ id, name, date_of_birth, gender, occupation }) => ({
     id,
     name,
-    dateOfBirth: date_of_birth,
+    dateOfBirth: toDateOnly(date_of_birth),
     gender,
     occupation,
   }));
@@ -117,7 +129,7 @@ const findNonSensitiveById = Effect.fnUntraced(function* (db: Kysely<DB>, id: st
   return {
     id: patient.id,
     name: patient.name,
-    dateOfBirth: patient.date_of_birth,
+    dateOfBirth: toDateOnly(patient.date_of_birth),
     gender: patient.gender,
     occupation: patient.occupation,
     entries: mappedEntries,
@@ -210,7 +222,7 @@ const addEntry = Effect.fnUntraced(function* (
   return {
     id: result.patient.id,
     name: result.patient.name,
-    dateOfBirth: result.patient.date_of_birth,
+    dateOfBirth: toDateOnly(result.patient.date_of_birth),
     gender: result.patient.gender,
     occupation: result.patient.occupation,
     entries: mappedEntries,
@@ -234,7 +246,7 @@ export const PatientRepositoryLive = Layer.effect(
 export const toEntry = (entry: EntryRow): Effect.Effect<Entry, InvalidPatientEntry> => {
   const baseEntry = {
     id: entry.id,
-    date: entry.date,
+    date: toDateOnly(entry.date),
     specialist: entry.specialist,
     description: entry.description,
     ...(entry.diagnosis_codes ? { diagnosisCodes: entry.diagnosis_codes } : {}),

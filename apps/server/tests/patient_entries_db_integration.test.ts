@@ -133,6 +133,11 @@ const postEntry = (body: unknown) =>
     return yield* client.execute(request);
   });
 
+const getPatients = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient;
+  return yield* client.execute(HttpClientRequest.get("/api/patients"));
+});
+
 describeIfDb("POST /api/patients/:id/entries with live database", () => {
   beforeAll(async () => {
     const db = makeDb();
@@ -171,6 +176,8 @@ describeIfDb("POST /api/patients/:id/entries with live database", () => {
       const body = (yield* occupational.json) as Record<string, unknown> & {
         entries: Array<Record<string, unknown>>;
       };
+      const patientListResponse = yield* getPatients.pipe(Effect.provide(ServerLive));
+      const patientList = (yield* patientListResponse.json) as Array<Record<string, unknown>>;
 
       const persisted = yield* Effect.acquireUseRelease(
         Effect.sync(makeDb),
@@ -190,7 +197,14 @@ describeIfDb("POST /api/patients/:id/entries with live database", () => {
       assert.strictEqual(hospital.status, 201);
       assert.strictEqual(occupational.status, 201);
       assert.notProperty(body, "ssn");
+      assert.strictEqual(body.dateOfBirth, "1990-01-01");
       assert.strictEqual(body.entries.length, 3);
+      assert.deepEqual(
+        body.entries.map((entry) => entry.date),
+        ["2026-05-11", "2026-05-12", "2026-05-14"],
+      );
+      assert.strictEqual(patientListResponse.status, 200);
+      assert.strictEqual(patientList[0]?.dateOfBirth, "1990-01-01");
       assert.deepEqual(
         persisted.map((entry) => entry.type),
         ["HealthCheck", "Hospital", "OccupationalHealthcare"],

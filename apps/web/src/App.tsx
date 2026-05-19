@@ -1,34 +1,28 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { BrowserRouter as Router, Link, Route, Routes } from "react-router-dom";
+import { createBrowserRouter, Link, Outlet, RouterProvider, useLoaderData } from "react-router-dom";
 import { Button, Container, Divider, Typography } from "@mui/material";
 
-import { apiBaseUrl } from "./constants.js";
-import type { Patient } from "./types.js";
+import { listDiagnoses } from "./diagnoses.ts/api.js";
+import type { Diagnosis } from "./types.js";
+import { DiagnosisProvider } from "./contexts/DiagnosisContext.js";
 
 import PatientListPage from "./components/PatientListPage/index.js";
+import { patientListLoader } from "./components/PatientListPage/index.js";
 import PatientPage from "./components/PatientPage/index.js";
-import patientService from "./services/patients.js";
+import { patientLoader } from "./components/PatientPage/index.js";
 
-const App = () => {
-  const [patients, setPatients] = useState<Patient[]>([]);
+const rootLoader = async () => {
+  try {
+    return await listDiagnoses();
+  } catch {
+    return null;
+  }
+};
 
-  useEffect(() => {
-    void axios.get<void>(`${apiBaseUrl}/ping`).catch(() => undefined);
-
-    const fetchPatientList = async () => {
-      try {
-        const patients = await patientService.getAll();
-        setPatients(patients);
-      } catch {
-        setPatients([]);
-      }
-    };
-    void fetchPatientList();
-  }, []);
+const RootLayout = () => {
+  const diagnoses = useLoaderData() as Diagnosis[] | null;
 
   return (
-    <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+    <DiagnosisProvider diagnoses={diagnoses ?? undefined}>
       <Container className="app-shell">
         <Typography variant="h3" style={{ marginBottom: "0.5em" }}>
           Patientor
@@ -37,16 +31,41 @@ const App = () => {
           Home
         </Button>
         <Divider hidden />
-        <Routes>
-          <Route
-            path="/"
-            element={<PatientListPage patients={patients} setPatients={setPatients} />}
-          />
-          <Route path="/patients/:id" element={<PatientPage />} />
-        </Routes>
+        <Outlet />
       </Container>
-    </Router>
+    </DiagnosisProvider>
   );
+};
+
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <RootLayout />,
+      loader: rootLoader,
+      children: [
+        {
+          index: true,
+          element: <PatientListPage />,
+          loader: patientListLoader,
+        },
+        {
+          path: "patients/:id",
+          element: <PatientPage />,
+          loader: patientLoader,
+        },
+      ],
+    },
+  ],
+  {
+    future: {
+      v7_relativeSplatPath: true,
+    },
+  },
+);
+
+const App = () => {
+  return <RouterProvider router={router} future={{ v7_startTransition: true }} />;
 };
 
 export default App;

@@ -1,30 +1,23 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import patientService from "../../services/patients.js";
+import type { LoaderFunctionArgs } from "react-router-dom";
+import { useLoaderData } from "react-router-dom";
+import { getPatient } from "../../patients/api.js";
 import type { PatientDetails } from "../../types.js";
 import Entries from "../Entries/index.js";
 
+export const patientLoader = async ({ params }: LoaderFunctionArgs) => {
+  if (!params.id) {
+    return null;
+  }
+
+  try {
+    return await getPatient(params.id);
+  } catch {
+    return null;
+  }
+};
+
 const PatientPage = () => {
-  const { id } = useParams();
-  const [patient, setPatient] = useState<PatientDetails | null>(null);
-
-  useEffect(() => {
-    if (!id) {
-      setPatient(null);
-      return;
-    }
-
-    const fetchOnePatient = async (id: string) => {
-      try {
-        const patient = await patientService.getOnePatient(id);
-        setPatient(patient);
-      } catch {
-        setPatient(null);
-      }
-    };
-
-    void fetchOnePatient(id);
-  }, [id]);
+  const patient = useLoaderData() as PatientDetails | null;
 
   if (!patient) return <p>Invalid Patient Id</p>;
   return (

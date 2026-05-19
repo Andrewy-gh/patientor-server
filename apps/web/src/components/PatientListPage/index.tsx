@@ -1,6 +1,5 @@
 import { useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLoaderData } from "react-router-dom";
 import {
   Box,
   Button,
@@ -11,21 +10,25 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import axios from "axios";
 
 import type { Patient, PatientFormValues } from "../../types.js";
 import AddPatientModal from "../AddPatientModal/index.js";
 
 import HealthRatingBar from "../HealthRatingBar.js";
 
-import patientService from "../../services/patients.js";
+import { createPatient, listPatients } from "../../patients/api.js";
 
-interface Props {
-  patients: Patient[];
-  setPatients: Dispatch<SetStateAction<Patient[]>>;
-}
+export const patientListLoader = async () => {
+  try {
+    return await listPatients();
+  } catch {
+    return [];
+  }
+};
 
-const PatientListPage = ({ patients, setPatients }: Props) => {
+const PatientListPage = () => {
+  const loadedPatients = useLoaderData() as Patient[];
+  const [patients, setPatients] = useState<Patient[]>(loadedPatients);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [error, setError] = useState<string>();
 
@@ -38,22 +41,12 @@ const PatientListPage = ({ patients, setPatients }: Props) => {
 
   const submitNewPatient = async (values: PatientFormValues) => {
     try {
-      const patient = await patientService.create(values);
+      const patient = await createPatient(values);
       setPatients(patients.concat(patient));
       setModalOpen(false);
-    } catch (e: unknown) {
-      if (axios.isAxiosError(e)) {
-        if (e?.response?.data && typeof e?.response?.data === "string") {
-          const message = e.response.data.replace("Something went wrong. Error: ", "");
-          console.error(message);
-          setError(message);
-        } else {
-          setError("Unrecognized axios error");
-        }
-      } else {
-        console.error("Unknown error", e);
-        setError("Unknown error");
-      }
+    } catch (error: unknown) {
+      console.error("Unknown error", error);
+      setError("Could not create patient");
     }
   };
 

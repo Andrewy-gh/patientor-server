@@ -18,8 +18,6 @@
     "@mui/material": "catalog:",
     "@patientor/api": "workspace:*",
     "@vitejs/plugin-react": "catalog:",
-    "axios": "catalog:",
-    "effect": "^4.0.0-beta.65",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router-dom": "catalog:"

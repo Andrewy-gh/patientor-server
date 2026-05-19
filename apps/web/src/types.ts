@@ -4,12 +4,14 @@ import type {
   Gender as ApiGender,
   HealthCheckRating as ApiHealthCheckRating,
   NewPatientInput,
+  NewEntryInput,
   NonSensitivePatient,
   NonSensitivePatientWithEntries,
+  PatientIdParams,
   Patient as CreatedPatient,
 } from "@patientor/api";
 
-export type { Diagnosis, Entry };
+export type { Diagnosis, Entry, NewEntryInput, NewPatientInput };
 
 export const Gender = {
   Female: "female",
@@ -41,3 +43,5 @@ export type PatientDetails = NonSensitivePatientWithEntries;
 export type PatientFormValues = NewPatientInput;
 
 export type CreatedPatientResponse = CreatedPatient;
+
+export type PatientId = PatientIdParams["id"];

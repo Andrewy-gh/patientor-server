@@ -1,13 +1,4 @@
-import { PatientorApi } from "@patientor/api";
-import { HttpApiClient } from "effect/unstable/httpapi";
-import { Effect } from "effect";
-import { FetchHttpClient } from "effect/unstable/http";
+import { getJson } from "../apiClient.js";
+import type { Diagnosis } from "../types.js";
 
-export const listDiagnoses = () =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const client = yield* HttpApiClient.make(PatientorApi);
-      const diagnoses = yield* client.diagnoses.list();
-      return diagnoses;
-    }).pipe(Effect.provide(FetchHttpClient.layer)),
-  );
+export const listDiagnoses = () => getJson<Diagnosis[]>("/api/diagnoses");

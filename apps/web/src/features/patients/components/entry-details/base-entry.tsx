@@ -1,6 +1,7 @@
 import { useContext } from "react";
-import { DiagnosisContext } from "../../contexts/DiagnosisContext.js";
-import type { Diagnosis, Entry } from "../../types.js";
+import { DiagnosisContext } from "../../../diagnoses/diagnosis-context.js";
+import type { Diagnosis } from "../../../diagnoses/types.js";
+import type { Entry } from "../../types.js";
 
 type Props = { entry: Entry };
 

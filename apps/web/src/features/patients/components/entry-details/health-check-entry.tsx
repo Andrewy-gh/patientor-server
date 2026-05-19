@@ -1,5 +1,5 @@
 import type { HealthCheckEntry as HealthCheckType } from "../../types.js";
-import BaseEntry from "./BaseEntry.js";
+import BaseEntry from "./base-entry.js";
 
 type Props = { entry: HealthCheckType };
 

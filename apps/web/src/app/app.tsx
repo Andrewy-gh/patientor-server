@@ -1,14 +1,14 @@
 import { createBrowserRouter, Link, Outlet, RouterProvider, useLoaderData } from "react-router-dom";
 import { Button, Container, Divider, Typography } from "@mui/material";
 
-import { listDiagnoses } from "./diagnoses.ts/api.js";
-import type { Diagnosis } from "./types.js";
-import { DiagnosisProvider } from "./contexts/DiagnosisContext.js";
+import { listDiagnoses } from "../features/diagnoses/api.js";
+import { DiagnosisProvider } from "../features/diagnoses/diagnosis-context.js";
+import type { Diagnosis } from "../features/diagnoses/types.js";
 
-import PatientListPage from "./components/PatientListPage/index.js";
-import { patientListLoader } from "./components/PatientListPage/index.js";
-import PatientPage from "./components/PatientPage/index.js";
-import { patientLoader } from "./components/PatientPage/index.js";
+import PatientListPage, {
+  patientListLoader,
+} from "../features/patients/pages/patient-list-page.js";
+import PatientPage, { patientLoader } from "../features/patients/pages/patient-page.js";
 
 const rootLoader = async () => {
   try {

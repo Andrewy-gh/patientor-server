@@ -1,8 +1,8 @@
 import type { LoaderFunctionArgs } from "react-router-dom";
 import { useLoaderData } from "react-router-dom";
-import { getPatient } from "../../patients/api.js";
-import type { PatientDetails } from "../../types.js";
-import Entries from "../Entries/index.js";
+import { getPatient } from "../api.js";
+import Entries from "../components/entries/index.js";
+import type { PatientDetails } from "../types.js";
 
 export const patientLoader = async ({ params }: LoaderFunctionArgs) => {
   if (!params.id) {

@@ -1,6 +1,6 @@
 import { createContext } from "react";
 import type { ReactNode } from "react";
-import type { Diagnosis } from "../types.js";
+import type { Diagnosis } from "./types.js";
 
 type DiagnosisContextType = Diagnosis[] | undefined;
 

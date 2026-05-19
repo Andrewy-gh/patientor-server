@@ -1,17 +1,16 @@
 import type {
-  Diagnosis,
   Entry,
   Gender as ApiGender,
   HealthCheckRating as ApiHealthCheckRating,
-  NewPatientInput,
   NewEntryInput,
+  NewPatientInput,
   NonSensitivePatient,
   NonSensitivePatientWithEntries,
-  PatientIdParams,
   Patient as CreatedPatient,
+  PatientIdParams,
 } from "@patientor/api";
 
-export type { Diagnosis, Entry, NewEntryInput, NewPatientInput };
+export type { Entry, NewEntryInput, NewPatientInput };
 
 export const Gender = {
   Female: "female",

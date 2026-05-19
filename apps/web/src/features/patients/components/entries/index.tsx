@@ -1,5 +1,5 @@
 import type { Entry } from "../../types.js";
-import EntryDetails from "../EntryDetails/index.js";
+import EntryDetails from "../entry-details/index.js";
 
 type Props = { entries: ReadonlyArray<Entry> };
 

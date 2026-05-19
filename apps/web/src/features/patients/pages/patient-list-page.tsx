@@ -11,12 +11,12 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { Patient, PatientFormValues } from "../../types.js";
-import AddPatientModal from "../AddPatientModal/index.js";
+import type { Patient, PatientFormValues } from "../types.js";
+import AddPatientModal from "../components/add-patient-modal/index.js";
 
-import HealthRatingBar from "../HealthRatingBar.js";
+import HealthRatingBar from "../components/health-rating-bar.js";
 
-import { createPatient, listPatients } from "../../patients/api.js";
+import { createPatient, listPatients } from "../api.js";
 
 export const patientListLoader = async () => {
   try {

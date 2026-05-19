@@ -1,7 +1,7 @@
 import type { Entry } from "../../types.js";
-import HealthCheckEntry from "./HealthCheckEntry.js";
-import HospitalEntry from "./HospitalEntry.js";
-import OccupationalEntry from "./OccupationalEntry.js";
+import HealthCheckEntry from "./health-check-entry.js";
+import HospitalEntry from "./hospital-entry.js";
+import OccupationalEntry from "./occupational-entry.js";
 
 type Props = { entry: Entry };
 

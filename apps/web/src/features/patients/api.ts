@@ -1,4 +1,4 @@
-import { getJson, postJson } from "../apiClient.js";
+import { getJson, postJson } from "../../shared/api-client.js";
 import type {
   CreatedPatientResponse,
   NewEntryInput,
@@ -6,7 +6,7 @@ import type {
   Patient,
   PatientDetails,
   PatientId,
-} from "../types.js";
+} from "./types.js";
 
 const patientPath = (id: PatientId) => `/api/patients/${encodeURIComponent(id)}`;
 

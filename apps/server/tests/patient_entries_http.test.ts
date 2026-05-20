@@ -1,7 +1,13 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
-import { Effect, Layer, Stream } from "effect";
-import { HttpClient, HttpClientRequest, HttpRouter } from "effect/unstable/http";
+import { Effect, Layer, Schema, Stream } from "effect";
+import { Entry as EntrySchema, NonSensitivePatientWithEntries } from "@patientor/api";
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpRouter,
+} from "effect/unstable/http";
 import { Database } from "../src/db/database.ts";
 import { HttpRoutes } from "../src/http/routes.ts";
 import { PatientRepository } from "../src/patients/repository.ts";
@@ -39,17 +45,17 @@ const makePatientRepository = (patients: NonSensitivePatient[] = [patient]) => {
         return addedPatient;
       }),
     addEntry: (id: string, entry: NewEntryInput) =>
-      Effect.sync(() => {
+      Effect.gen(function* () {
         const foundPatient = patients.find((candidate) => candidate.id === id);
 
         if (!foundPatient) {
           return undefined;
         }
 
-        const newEntry = {
+        const newEntry = yield* Schema.decodeUnknownEffect(EntrySchema)({
           id: `entry-${entries.length + 1}`,
           ...entry,
-        } as Entry;
+        }).pipe(Effect.orDie);
 
         entries.push(newEntry);
 
@@ -175,9 +181,9 @@ describe("POST /api/v1/patients/:id/entries", () => {
         specialist: "Dr Test",
         healthCheckRating: 1,
       }).pipe(Effect.provide(withServer(makePatientRepository())));
-      const body = (yield* response.json) as Record<string, unknown> & {
-        entries: Array<Record<string, unknown>>;
-      };
+      const body = yield* HttpClientResponse.schemaBodyJson(NonSensitivePatientWithEntries)(
+        response,
+      );
 
       assert.strictEqual(response.status, 201);
       assert.notProperty(body, "ssn");
@@ -201,9 +207,9 @@ describe("POST /api/v1/patients/:id/entries", () => {
         specialist: "Dr Ward",
         discharge,
       }).pipe(Effect.provide(withServer(makePatientRepository())));
-      const body = (yield* response.json) as Record<string, unknown> & {
-        entries: Array<Record<string, unknown>>;
-      };
+      const body = yield* HttpClientResponse.schemaBodyJson(NonSensitivePatientWithEntries)(
+        response,
+      );
 
       assert.strictEqual(response.status, 201);
       assert.notProperty(body, "ssn");
@@ -213,7 +219,11 @@ describe("POST /api/v1/patients/:id/entries", () => {
         date: "2026-05-11",
         specialist: "Dr Ward",
       });
-      assert.deepEqual(body.entries[0]?.discharge, discharge);
+      const returnedEntry = body.entries[0];
+      if (!returnedEntry || returnedEntry.type !== "Hospital") {
+        assert.fail("Expected a Hospital entry");
+      }
+      assert.deepEqual(returnedEntry.discharge, discharge);
     }),
   );
 
@@ -228,9 +238,9 @@ describe("POST /api/v1/patients/:id/entries", () => {
         employerName: "ACME",
         sickLeave,
       }).pipe(Effect.provide(withServer(makePatientRepository())));
-      const body = (yield* response.json) as Record<string, unknown> & {
-        entries: Array<Record<string, unknown>>;
-      };
+      const body = yield* HttpClientResponse.schemaBodyJson(NonSensitivePatientWithEntries)(
+        response,
+      );
 
       assert.strictEqual(response.status, 201);
       assert.notProperty(body, "ssn");
@@ -241,7 +251,11 @@ describe("POST /api/v1/patients/:id/entries", () => {
         specialist: "Dr Work",
         employerName: "ACME",
       });
-      assert.deepEqual(body.entries[0]?.sickLeave, sickLeave);
+      const returnedEntry = body.entries[0];
+      if (!returnedEntry || returnedEntry.type !== "OccupationalHealthcare") {
+        assert.fail("Expected an OccupationalHealthcare entry");
+      }
+      assert.deepEqual(returnedEntry.sickLeave, sickLeave);
     }),
   );
 });

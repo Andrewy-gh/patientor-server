@@ -44,7 +44,7 @@ const PatientListPage = () => {
       const patient = await createPatient(values);
       setPatients(patients.concat(patient));
       setModalOpen(false);
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Unknown error", error);
       setError("Could not create patient");
     }

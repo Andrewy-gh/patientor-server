@@ -1,0 +1,14 @@
+{
+  "apps/server/src/db/seed.ts::patient.gender as Gender": 1,
+  "apps/server/src/http/routes.ts::HttpApiBuilder.layer(PatientorApi, { openapiPath: \"/openapi.json\", }).pipe( Layer.provide(Layer.mergeAll(DiagnosesApiLive, PatientsApiLive, HealthApiLive)), ) as unknown": 1,
+  "apps/server/src/http/routes.ts::HttpApiBuilder.layer(PatientorApi, { openapiPath: \"/openapi.json\", }).pipe( Layer.provide(Layer.mergeAll(DiagnosesApiLive, PatientsApiLive, HealthApiLive)), ) as unknown as Layer.Layer<never, never, HttpRoutesRequirements>": 1,
+  "apps/server/src/patients/repository.ts::entry as EntryRow": 1,
+  "apps/server/src/patients/repository.ts::newPatient.gender as Gender": 1,
+  "apps/server/tests/patient_entries_http.test.ts::{} as never": 1,
+  "apps/web/src/app/app.tsx::useLoaderData() as Diagnosis[] | null": 1,
+  "apps/web/src/features/patients/pages/patient-list-page.tsx::useLoaderData() as Patient[]": 1,
+  "apps/web/src/features/patients/pages/patient-page.tsx::useLoaderData() as PatientDetails | null": 1,
+  "apps/web/src/shared/api-client.test.ts::fetchMock.mock.calls as unknown": 1,
+  "apps/web/src/shared/api-client.test.ts::fetchMock.mock.calls as unknown as Array< [RequestInfo | URL, RequestInit | undefined] >": 1,
+  "apps/web/src/shared/api-client.ts::(await response.json()) as ResponseBody": 2
+}

@@ -39,7 +39,7 @@ const PatientPage = () => {
       const updatedPatient = await addPatientEntry(patient.id, values);
       setPatient(updatedPatient);
       closeModal();
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Unknown error", error);
       setError("Could not create entry");
     }

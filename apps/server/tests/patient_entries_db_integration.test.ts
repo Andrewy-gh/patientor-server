@@ -1,7 +1,13 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, beforeAll, describe, it } from "@effect/vitest";
-import { Effect, Layer, Stream } from "effect";
-import { HttpClient, HttpClientRequest, HttpRouter } from "effect/unstable/http";
+import { Effect, Layer, Schema, Stream } from "effect";
+import { NonSensitivePatient, NonSensitivePatientWithEntries } from "@patientor/api";
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpRouter,
+} from "effect/unstable/http";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { Pool } from "pg";
 import { AppConfigService } from "../src/config.ts";
@@ -177,11 +183,13 @@ describeIfDb("POST /api/v1/patients/:id/entries with live database", () => {
         employerName: "ACME",
         sickLeave: { startDate: "2026-05-14", endDate: "2026-05-16" },
       }).pipe(Effect.provide(ServerLive));
-      const body = (yield* occupational.json) as Record<string, unknown> & {
-        entries: Array<Record<string, unknown>>;
-      };
+      const body = yield* HttpClientResponse.schemaBodyJson(NonSensitivePatientWithEntries)(
+        occupational,
+      );
       const patientListResponse = yield* getPatients.pipe(Effect.provide(ServerLive));
-      const patientList = (yield* patientListResponse.json) as Array<Record<string, unknown>>;
+      const patientList = yield* HttpClientResponse.schemaBodyJson(
+        Schema.Array(NonSensitivePatient),
+      )(patientListResponse);
 
       const persisted = yield* Effect.acquireUseRelease(
         Effect.sync(makeDb),

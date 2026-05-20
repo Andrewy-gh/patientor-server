@@ -13,7 +13,7 @@ const isRequestParseError = (error: unknown) =>
 
 const patientsRoute = HttpRouter.route(
   "GET",
-  "/api/patients",
+  "/api/v1/patients",
   Effect.gen(function* () {
     const patients = yield* PatientRepository;
     const foundPatients = yield* patients.findNonSensitive();
@@ -31,7 +31,7 @@ const patientsRoute = HttpRouter.route(
 
 const patientRoute = HttpRouter.route(
   "GET",
-  "/api/patients/:id",
+  "/api/v1/patients/:id",
   Effect.gen(function* () {
     const { id } = yield* HttpRouter.schemaPathParams(PatientIdParams);
     const patients = yield* PatientRepository;
@@ -64,7 +64,7 @@ const patientRoute = HttpRouter.route(
 
 const addPatientRoute = HttpRouter.route(
   "POST",
-  "/api/patients",
+  "/api/v1/patients",
   Effect.gen(function* () {
     const newPatient = yield* HttpServerRequest.schemaBodyJson(NewPatientInput);
     const patients = yield* PatientRepository;
@@ -90,7 +90,7 @@ const addPatientRoute = HttpRouter.route(
 
 const addPatientEntryRoute = HttpRouter.route(
   "POST",
-  "/api/patients/:id/entries",
+  "/api/v1/patients/:id/entries",
   Effect.gen(function* () {
     const { id } = yield* HttpRouter.schemaPathParams(PatientIdParams);
     const newEntry = yield* HttpServerRequest.schemaBodyJson(NewEntryInput);

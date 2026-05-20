@@ -4,7 +4,7 @@ import { getDiagnoses } from "./service.ts";
 
 const diagnosesRoute = HttpRouter.route(
   "GET",
-  "/api/diagnoses",
+  "/api/v1/diagnoses",
   getDiagnoses.pipe(
     Effect.flatMap((diagnoses) => HttpServerResponse.json(diagnoses)),
     Effect.catchTag("DiagnosisReadError", (error) =>

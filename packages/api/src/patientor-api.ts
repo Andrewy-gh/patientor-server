@@ -37,13 +37,13 @@ export class PatientsApi extends HttpApiGroup.make("patients").add(
   HttpApiEndpoint.post("create", "/patients", {
     payload: NewPatientInput,
     success: CreatedPatient,
-    error: HttpApiError.InternalServerError,
+    error: [HttpApiError.BadRequest, HttpApiError.InternalServerError],
   }),
   HttpApiEndpoint.post("addEntry", "/patients/:id/entries", {
     params: PatientIdParams,
     payload: NewEntryInput,
     success: UpdatedPatient,
-    error: [HttpApiError.NotFound, HttpApiError.InternalServerError],
+    error: [HttpApiError.BadRequest, HttpApiError.NotFound, HttpApiError.InternalServerError],
   }),
 ) {}
 
@@ -55,7 +55,7 @@ export class HealthApi extends HttpApiGroup.make("health").add(
 
 export class PatientorApi extends HttpApi.make("patientor")
   .add(DiagnosesApi, PatientsApi, HealthApi)
-  .prefix("/api")
+  .prefix("/api/v1")
   .annotateMerge(
     OpenApi.annotations({
       title: "Patientor API",

@@ -11,7 +11,7 @@ test("getJson returns parsed response data", async () => {
     vi.fn(async () => Response.json({ name: "Matti Luukkainen" })),
   );
 
-  const result = await getJson<{ name: string }>("/api/patients");
+  const result = await getJson<{ name: string }>("/api/v1/patients");
 
   assert.deepStrictEqual(result, { name: "Matti Luukkainen" });
 });
@@ -20,13 +20,13 @@ test("postJson sends json payload", async () => {
   const fetchMock = vi.fn(async () => Response.json({ id: "patient-id" }));
   vi.stubGlobal("fetch", fetchMock);
 
-  await postJson("/api/patients", { name: "Ada Lovelace" });
+  await postJson("/api/v1/patients", { name: "Ada Lovelace" });
 
   const calls = fetchMock.mock.calls as unknown as Array<
     [RequestInfo | URL, RequestInit | undefined]
   >;
 
-  assert.strictEqual(calls[0]?.[0], "/api/patients");
+  assert.strictEqual(calls[0]?.[0], "/api/v1/patients");
   assert.deepStrictEqual(calls[0]?.[1], {
     method: "POST",
     headers: {
@@ -42,5 +42,5 @@ test("getJson rejects failed responses", async () => {
     vi.fn(async () => new Response("Invalid patient id", { status: 400 })),
   );
 
-  await expect(getJson("/api/patients/not-valid")).rejects.toThrow("Invalid patient id");
+  await expect(getJson("/api/v1/patients/not-valid")).rejects.toThrow("Invalid patient id");
 });

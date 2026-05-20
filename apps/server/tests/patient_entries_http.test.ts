@@ -87,7 +87,7 @@ const encoder = new TextEncoder();
 const postBody = (id: string, body: string) =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient;
-    const request = HttpClientRequest.post(`/api/patients/${id}/entries`).pipe(
+    const request = HttpClientRequest.post(`/api/v1/patients/${id}/entries`).pipe(
       HttpClientRequest.bodyStream(Stream.make(encoder.encode(body)), {
         contentType: "application/json",
       }),
@@ -99,7 +99,7 @@ const postEntry = (id: string, body: unknown) => postBody(id, JSON.stringify(bod
 
 const postMalformedEntry = (id: string) => postBody(id, "{");
 
-describe("POST /api/patients/:id/entries", () => {
+describe("POST /api/v1/patients/:id/entries", () => {
   it.effect("returns 400 for invalid patient id", () =>
     Effect.gen(function* () {
       const response = yield* postEntry("not-a-uuid", {

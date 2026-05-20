@@ -109,11 +109,15 @@ const resetDb = (db: Kysely<DB>) =>
       .execute();
   });
 
-const AppConfigTest = Layer.succeed(AppConfigService)({
+const appConfigTest = {
   port: 0,
   databaseUrl: databaseUrl ?? "",
   nodeEnv: "test",
-});
+  tracingEnabled: false,
+  otlpEndpoint: "http://localhost:4318",
+};
+
+const AppConfigTest = Layer.succeed(AppConfigService)(appConfigTest);
 
 const ServerLive = HttpRouter.serve(HttpRoutes).pipe(
   Layer.provideMerge(NodeHttpServer.layerTest),
@@ -124,7 +128,7 @@ const ServerLive = HttpRouter.serve(HttpRoutes).pipe(
 const postEntry = (body: unknown) =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient;
-    const request = HttpClientRequest.post(`/api/patients/${patientId}/entries`).pipe(
+    const request = HttpClientRequest.post(`/api/v1/patients/${patientId}/entries`).pipe(
       HttpClientRequest.bodyStream(Stream.make(encoder.encode(JSON.stringify(body))), {
         contentType: "application/json",
       }),
@@ -135,10 +139,10 @@ const postEntry = (body: unknown) =>
 
 const getPatients = Effect.gen(function* () {
   const client = yield* HttpClient.HttpClient;
-  return yield* client.execute(HttpClientRequest.get("/api/patients"));
+  return yield* client.execute(HttpClientRequest.get("/api/v1/patients"));
 });
 
-describeIfDb("POST /api/patients/:id/entries with live database", () => {
+describeIfDb("POST /api/v1/patients/:id/entries with live database", () => {
   beforeAll(async () => {
     const db = makeDb();
     await Effect.runPromise(migrate(db));

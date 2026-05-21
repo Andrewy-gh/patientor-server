@@ -18,6 +18,9 @@ catalogs:
     '@mui/material':
       specifier: ^5.18.0
       version: 5.18.0
+    '@oxlint/plugins':
+      specifier: 1.66.0
+      version: 1.66.0
     '@types/node':
       specifier: ^24
       version: 24.12.4
@@ -54,6 +57,9 @@ importers:
 
   .:
     devDependencies:
+      '@oxlint/plugins':
+        specifier: 'catalog:'
+        version: 1.66.0
       '@types/node':
         specifier: 'catalog:'
         version: 24.12.4
@@ -941,6 +947,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@oxlint/plugins@1.66.0':
+    resolution: {integrity: sha512-dVw9+y1tB9rDObtjzsDhxRsreZrEoKohujt+w/sZ09+kmA5yI/ORQJFPR/xSC+jpw0TWmE6gnb6N1lD/z7uElA==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -2655,6 +2665,8 @@ snapshots:
 
   '@oxlint/binding-win32-x64-msvc@1.63.0':
     optional: true
+
+  '@oxlint/plugins@1.66.0': {}
 
   '@polka/url@1.0.0-next.29': {}
 

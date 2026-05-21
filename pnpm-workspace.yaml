@@ -3,13 +3,12 @@ packages:
   - packages/*
   - tools/*
 
-catalogMode: prefer
-
 catalog:
   "@emotion/react": ^11.14.0
   "@emotion/styled": ^11.14.1
   "@mui/icons-material": ^5.18.0
   "@mui/material": ^5.18.0
+  "@oxlint/plugins": 1.66.0
   "@types/node": ^24
   "@types/react": ^18.3.27
   "@types/react-dom": ^18.3.7
@@ -20,8 +19,10 @@ catalog:
   react-router-dom: ^6.30.1
   typescript: ^5
   vite: npm:@voidzero-dev/vite-plus-core@latest
-  vitest: npm:@voidzero-dev/vite-plus-test@latest
   vite-plus: latest
+  vitest: npm:@voidzero-dev/vite-plus-test@latest
+
+catalogMode: prefer
 
 overrides:
   vite: "catalog:"

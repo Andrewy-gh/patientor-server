@@ -8,7 +8,7 @@
     "dev": "vp run --parallel --log labeled -F server -F web dev",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
-    "check": "vp check && node tooling/check-local-rules.js",
+    "check": "vp check",
     "build": "vp run -r build",
     "test": "vp run -r test",
     "typecheck": "vp run -r typecheck",
@@ -16,6 +16,7 @@
     "prepare": "vp config"
   },
   "devDependencies": {
+    "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
     "vite-plus": "catalog:"
   },

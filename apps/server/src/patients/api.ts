@@ -8,17 +8,18 @@ const internalServerError = (error: unknown) =>
     Effect.flatMap(() => Effect.fail(new HttpApiError.InternalServerError({}))),
   );
 
-const decodeJsonPayload = <A>(schema: Schema.Schema<A>) =>
+const decodeJsonPayload =
+  <A>(schema: Schema.Schema<A>) =>
   (request: { readonly json: Effect.Effect<unknown, unknown, unknown> }) =>
-  Effect.gen(function* () {
-    const body = yield* request.json.pipe(
-      Effect.catch(() => Effect.fail(new HttpApiError.BadRequest({}))),
-    );
+    Effect.gen(function* () {
+      const body = yield* request.json.pipe(
+        Effect.catch(() => Effect.fail(new HttpApiError.BadRequest({}))),
+      );
 
-    return yield* Schema.decodeUnknownEffect(schema)(body).pipe(
-      Effect.catchIf(Schema.isSchemaError, () => Effect.fail(new HttpApiError.BadRequest({}))),
-    );
-  });
+      return yield* Schema.decodeUnknownEffect(schema)(body).pipe(
+        Effect.catchIf(Schema.isSchemaError, () => Effect.fail(new HttpApiError.BadRequest({}))),
+      );
+    });
 
 export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (handlers) =>
   handlers

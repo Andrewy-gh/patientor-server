@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { SyntheticEvent } from "react";
 
-import { Box, Button, InputLabel, MenuItem, Select, TextField } from "@mui/material";
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, TextField } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 
 import { HealthCheckRating } from "../../types.js";
@@ -103,15 +103,17 @@ const AddEntryForm = ({ onCancel, onSubmit }: Props) => {
   };
 
   return (
-    <form onSubmit={addEntry}>
-      <InputLabel>Entry type</InputLabel>
-      <Select label="Entry type" fullWidth value={type} onChange={onEntryTypeChange}>
-        {entryTypes.map((entryType) => (
-          <MenuItem key={entryType} value={entryType}>
-            {entryType}
-          </MenuItem>
-        ))}
-      </Select>
+    <form className="form-stack" onSubmit={addEntry}>
+      <FormControl fullWidth>
+        <InputLabel>Entry type</InputLabel>
+        <Select label="Entry type" value={type} onChange={onEntryTypeChange}>
+          {entryTypes.map((entryType) => (
+            <MenuItem key={entryType} value={entryType}>
+              {entryType}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
       <TextField
         label="Description"
@@ -141,11 +143,10 @@ const AddEntryForm = ({ onCancel, onSubmit }: Props) => {
       />
 
       {type === "HealthCheck" && (
-        <>
-          <InputLabel style={{ marginTop: 20 }}>Health check rating</InputLabel>
+        <FormControl fullWidth>
+          <InputLabel>Health check rating</InputLabel>
           <Select
             label="Health check rating"
-            fullWidth
             value={String(healthCheckRating)}
             onChange={onHealthCheckRatingChange}
           >
@@ -155,7 +156,7 @@ const AddEntryForm = ({ onCancel, onSubmit }: Props) => {
               </MenuItem>
             ))}
           </Select>
-        </>
+        </FormControl>
       )}
 
       {type === "Hospital" && (
@@ -201,12 +202,12 @@ const AddEntryForm = ({ onCancel, onSubmit }: Props) => {
         </>
       )}
 
-      <Box display="flex" justifyContent="space-between" marginTop={2}>
-        <Button color="secondary" variant="contained" type="button" onClick={onCancel}>
+      <Box className="form-actions">
+        <Button color="inherit" variant="outlined" type="button" onClick={onCancel}>
           Cancel
         </Button>
         <Button type="submit" variant="contained">
-          Add
+          Add entry
         </Button>
       </Box>
     </form>

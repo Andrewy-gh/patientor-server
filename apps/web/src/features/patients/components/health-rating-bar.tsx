@@ -1,5 +1,5 @@
-import { Favorite } from "@mui/icons-material";
-import { Rating } from "@mui/material";
+import { Favorite, FavoriteBorder } from "@mui/icons-material";
+import { Stack, Typography, Rating } from "@mui/material";
 
 import { styled } from "@mui/material/styles";
 
@@ -26,11 +26,21 @@ const HEALTHBAR_TEXTS = [
 
 const HealthRatingBar = ({ rating, showText }: BarProps) => {
   return (
-    <div className="health-bar">
-      <StyledRating readOnly value={4 - rating} max={4} icon={<Favorite fontSize="inherit" />} />
+    <Stack className="health-bar" spacing={0.5}>
+      <StyledRating
+        readOnly
+        value={4 - rating}
+        max={4}
+        icon={<Favorite fontSize="inherit" />}
+        emptyIcon={<FavoriteBorder fontSize="inherit" />}
+      />
 
-      {showText ? <p>{HEALTHBAR_TEXTS[rating]}</p> : null}
-    </div>
+      {showText ? (
+        <Typography color="text.secondary" variant="body2">
+          {HEALTHBAR_TEXTS[rating]}
+        </Typography>
+      ) : null}
+    </Stack>
   );
 };
 

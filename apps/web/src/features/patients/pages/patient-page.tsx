@@ -1,7 +1,8 @@
 import type { LoaderFunctionArgs } from "react-router-dom";
 import { useState } from "react";
 import { useLoaderData } from "react-router-dom";
-import { Button } from "@mui/material";
+import { Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { AddRounded, BadgeRounded, PersonRounded, WorkRounded } from "@mui/icons-material";
 import { addPatientEntry, getPatient } from "../api.js";
 import AddEntryModal from "../components/add-entry-modal/index.js";
 import Entries from "../components/entries/index.js";
@@ -47,10 +48,27 @@ const PatientPage = () => {
 
   if (!patient) return <p>Invalid Patient Id</p>;
   return (
-    <section>
-      <h1>{patient.name}</h1>
-      <div>gender: {patient.gender}</div>
-      <div>occupation {patient.occupation}</div>
+    <Stack component="section" spacing={3}>
+      <Box className="patient-chart-header">
+        <Stack
+          alignItems={{ xs: "flex-start", md: "center" }}
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          spacing={2}
+        >
+          <Stack alignItems="flex-start" spacing={1}>
+            <Chip icon={<BadgeRounded />} label={`${patient.entries.length} entries`} />
+            <Typography variant="h3">{patient.name}</Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Chip icon={<PersonRounded />} label={patient.gender} variant="outlined" />
+              <Chip icon={<WorkRounded />} label={patient.occupation} variant="outlined" />
+            </Stack>
+          </Stack>
+          <Button startIcon={<AddRounded />} variant="contained" onClick={() => setModalOpen(true)}>
+            Add entry
+          </Button>
+        </Stack>
+      </Box>
       <Entries entries={patient.entries} />
       <AddEntryModal
         modalOpen={modalOpen}
@@ -58,10 +76,7 @@ const PatientPage = () => {
         error={error}
         onClose={closeModal}
       />
-      <Button variant="contained" onClick={() => setModalOpen(true)}>
-        Add New Entry
-      </Button>
-    </section>
+    </Stack>
   );
 };
 

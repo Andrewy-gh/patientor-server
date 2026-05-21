@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { SyntheticEvent } from "react";
 
-import { Box, Button, InputLabel, MenuItem, Select, TextField } from "@mui/material";
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, TextField } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 
 import { Gender } from "../../types.js";
@@ -52,8 +52,8 @@ const AddPatientForm = ({ onCancel, onSubmit }: Props) => {
   };
 
   return (
-    <div>
-      <form onSubmit={addPatient}>
+    <Box>
+      <form className="form-stack" onSubmit={addPatient}>
         <TextField
           label="Name"
           fullWidth
@@ -80,25 +80,27 @@ const AddPatientForm = ({ onCancel, onSubmit }: Props) => {
           onChange={({ target }) => setOccupation(target.value)}
         />
 
-        <InputLabel style={{ marginTop: 20 }}>Gender</InputLabel>
-        <Select label="Gender" fullWidth value={gender} onChange={onGenderChange}>
-          {genderOptions.map((option) => (
-            <MenuItem key={option.label} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </Select>
+        <FormControl fullWidth>
+          <InputLabel>Gender</InputLabel>
+          <Select label="Gender" value={gender} onChange={onGenderChange}>
+            {genderOptions.map((option) => (
+              <MenuItem key={option.label} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-        <Box display="flex" justifyContent="space-between" marginTop={2}>
-          <Button color="secondary" variant="contained" type="button" onClick={onCancel}>
+        <Box className="form-actions">
+          <Button color="inherit" variant="outlined" type="button" onClick={onCancel}>
             Cancel
           </Button>
           <Button type="submit" variant="contained">
-            Add
+            Add patient
           </Button>
         </Box>
       </form>
-    </div>
+    </Box>
   );
 };
 

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { eslintCompatPlugin } from "@oxlint/plugins";
 
 const assertionMessage =
@@ -8,7 +9,8 @@ const assertionMessage =
 const unknownMessage =
   "Avoid `unknown` in regular product code. Keep it at route handlers, API boundaries, DB loading boundaries, schema parsing, or other external-data boundaries.";
 
-const baselinePath = path.join(process.cwd(), "tooling", "type-assertion-baseline.json");
+const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const baselinePath = path.join(repoRoot, "tooling", "type-assertion-baseline.json");
 const assertionBaseline = new Map(
   Object.entries(JSON.parse(fs.readFileSync(baselinePath, "utf8"))),
 );
@@ -17,7 +19,7 @@ const normalizeText = (text) => text.replace(/\s+/g, " ").trim();
 
 const toRepoPath = (filename) => {
   const absolutePath = path.isAbsolute(filename) ? filename : path.resolve(process.cwd(), filename);
-  return path.relative(process.cwd(), absolutePath).replaceAll(path.sep, "/");
+  return path.relative(repoRoot, absolutePath).replaceAll(path.sep, "/");
 };
 
 const getSourceCode = (context) => context.sourceCode ?? context.getSourceCode();

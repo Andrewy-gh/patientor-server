@@ -40,6 +40,6 @@ RUN touch .env
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "const port = process.env.PORT || '3001'; fetch(`http://127.0.0.1:${port}/api/v1/ping`).then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+  CMD ["node", "-e", "const port = process.env.PORT || '3001'; fetch('http://127.0.0.1:' + port + '/api/v1/ping').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
 
 CMD ["node", "build/src/index.js"]

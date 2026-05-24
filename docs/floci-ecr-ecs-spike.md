@@ -238,6 +238,64 @@ container lastStatus: RUNNING
 backend logs: Listening on http://0.0.0.0:3001
 ```
 
+## Managed Service Recovery
+
+After the one-off task works, create a managed ECS service so Floci owns the task
+lifecycle:
+
+```powershell
+aws ecs create-service `
+  --cluster patientor-dev `
+  --service-name patientor-server `
+  --task-definition patientor-server:1 `
+  --desired-count 1 `
+  --endpoint-url $env:AWS_ENDPOINT_URL `
+  --region us-east-1
+```
+
+Expected service result:
+
+```text
+status: ACTIVE
+desiredCount: 1
+runningCount: 1
+startedBy: ecs-svc
+```
+
+Stopping the service-owned task through the ECS API created a replacement task:
+
+```powershell
+aws ecs stop-task `
+  --cluster patientor-dev `
+  --task arn:aws:ecs:us-east-1:000000000000:task/patientor-dev/<task-id> `
+  --endpoint-url $env:AWS_ENDPOINT_URL `
+  --region us-east-1
+```
+
+Observed result:
+
+```text
+old task: STOPPED
+new task: RUNNING
+service desiredCount: 1
+service runningCount: 1
+new task startedBy: ecs-svc
+```
+
+This proves Floci can keep a service at desired count when tasks are stopped
+through the ECS control plane.
+
+Important limitation: removing the underlying Docker container directly, for
+example through Docker Desktop or `docker rm -f`, did not immediately reconcile
+back into ECS task state. Docker no longer showed the container, but Floci still
+reported the task as `RUNNING`.
+
+Treat that as a Floci fidelity limitation, not a blocker for this local
+production-shaped deploy spike. Real ECS owns container lifecycle inside AWS;
+this local emulator is using Docker as an implementation detail. For this spike,
+prefer ECS API operations (`stop-task`, `update-service`, `delete-service`) when
+testing service behavior.
+
 ## ECS Host-Access Proxy Workaround
 
 On this Windows Docker Desktop setup, Floci reported the ECS task port binding

@@ -15,6 +15,14 @@ Before making substantial Effect changes, read the Patientor-specific guidance i
 
 Those files are the preferred local playbook for this app. They are intentionally Patientor-specific and should win over generic Effect examples unless the installed package types prove otherwise.
 
+## Local Floci spike
+
+For the Floci ECR/ECS local deploy spike, read `docs/floci-ecr-ecs-spike.md`
+before changing Docker, ECR, ECS, registry, or LocalStack-replacement setup. The
+current Windows Docker Desktop path uses Floci ECR path-style URIs and a small
+loopback proxy so Floci's ECR control plane can enumerate images in the registry
+sidecar.
+
 ## Tooling
 
 This repo uses Vite+ through the `vp` command. Vite+ wraps Oxlint, Oxfmt,

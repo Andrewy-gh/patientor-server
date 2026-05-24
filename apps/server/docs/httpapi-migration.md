@@ -1,7 +1,8 @@
 # Migrating Patientor Routes To HttpApi
 
-This migration is happening. Patientor is moving from plain `HttpRouter` routes
-to Effect's schema-first `HttpApi`.
+This migration has happened for the public Patientor routes. Patientor now uses
+Effect's schema-first `HttpApi` contract from `@patientor/api`, with old
+`HttpRouter` route files kept only as compatibility/reference material.
 
 The user impact should stay boring: the same public paths, status codes, and
 JSON shapes should keep working for `curl`, browser `fetch`, Postman, and
@@ -13,19 +14,21 @@ come from one definition.
 
 The server currently exposes these public routes:
 
-- `GET /api/ping`
-- `GET /api/diagnoses`
-- `GET /api/patients`
-- `GET /api/patients/:id`
-- `POST /api/patients`
-- `POST /api/patients/:id/entries`
+- `GET /api/v1/ping`
+- `GET /api/v1/diagnoses`
+- `GET /api/v1/patients`
+- `GET /api/v1/patients/:id`
+- `POST /api/v1/patients`
+- `POST /api/v1/patients/:id/entries`
 
-Keep those paths unchanged unless product explicitly chooses versioned URLs.
+Keep those paths unchanged unless product explicitly chooses another versioned
+URL shape.
 
 ## Installed Effect v4 Shape
 
-The repo currently uses `effect@4.0.0-beta.65` and
-`@effect/platform-node@4.0.0-beta.65`.
+The package manifests currently request `effect@^4.0.0-beta.65` and
+`@effect/platform-node@^4.0.0-beta.65`; the lockfile and installed
+`node_modules` currently resolve them to `4.0.0-beta.66`.
 
 Verify exact APIs against `node_modules/effect` before editing code. The
 current beta exports `HttpApi` from:
@@ -61,19 +64,27 @@ Move one route group at a time:
 1. Define the shared API contract and schemas.
 2. Migrate diagnoses first because it is read-only.
 3. Migrate patient reads.
-4. Migrate `POST /api/patients`.
-5. Migrate `POST /api/patients/:id/entries`.
-6. Add `GET /api/ping` to the contract if it should appear in generated docs.
+4. Migrate `POST /api/v1/patients`.
+5. Migrate `POST /api/v1/patients/:id/entries`.
+6. Keep `GET /api/v1/ping` in the contract so generated docs include it.
 7. Wire `HttpApiBuilder.layer(...)` into the server.
-8. Remove old `HttpRouter` routes only after regression tests pass.
+8. Remove old `HttpRouter` route files only after regression tests and imports
+   prove they are unused.
 
 ## 1. Define Shared Schemas
 
-Create the API contract near the HTTP layer. This example uses one
-`src/http/api.ts` file while the migration is small.
+The API contract lives in `packages/api`, not under `apps/server/src/http`.
+This keeps the public schema importable by both the server and the frontend.
+The files are:
+
+```text
+packages/api/src/diagnoses.ts
+packages/api/src/patients.ts
+packages/api/src/patientor-api.ts
+```
 
 ```ts
-// src/http/api.ts
+// packages/api/src/patients.ts
 import { Schema } from "effect";
 import {
   HttpApi,
@@ -103,7 +114,7 @@ export const HealthCheckRating = Schema.Union([
   Schema.Literal(3),
 ]);
 
-export const NonSensitiveEntry = Schema.Union([
+export const Entry = Schema.Union([
   Schema.Struct({
     id: Schema.String,
     description: Schema.String,
@@ -156,7 +167,7 @@ export const NonSensitivePatientWithEntries = Schema.Struct({
   dateOfBirth: Schema.String,
   gender: Gender,
   occupation: Schema.String,
-  entries: Schema.Array(NonSensitiveEntry),
+  entries: Schema.Array(Entry),
 });
 
 export const CreatedPatient = Schema.Struct({
@@ -166,7 +177,7 @@ export const CreatedPatient = Schema.Struct({
   ssn: Schema.String,
   gender: Gender,
   occupation: Schema.String,
-  entries: Schema.Array(NonSensitiveEntry),
+  entries: Schema.Array(Entry),
 }).pipe(HttpApiSchema.status("Created"));
 
 const DateOnly = Schema.String.check(
@@ -239,11 +250,11 @@ export const UpdatedPatient = NonSensitivePatientWithEntries.pipe(HttpApiSchema.
 
 ## 2. Define The API Contract
 
-Keep `/api` as the public prefix. Group names are typed names, not public path
+Keep `/api/v1` as the public prefix. Group names are typed names, not public path
 segments unless a group or endpoint is explicitly prefixed.
 
 ```ts
-// src/http/api.ts, continued
+// packages/api/src/patientor-api.ts
 export class DiagnosesApi extends HttpApiGroup.make("diagnoses").add(
   HttpApiEndpoint.get("list", "/diagnoses", {
     success: Schema.Array(Diagnosis),
@@ -264,13 +275,13 @@ export class PatientsApi extends HttpApiGroup.make("patients").add(
   HttpApiEndpoint.post("create", "/patients", {
     payload: NewPatientInput,
     success: CreatedPatient,
-    error: HttpApiError.InternalServerError,
+    error: [HttpApiError.BadRequest, HttpApiError.InternalServerError],
   }),
   HttpApiEndpoint.post("addEntry", "/patients/:id/entries", {
     params: PatientIdParams,
     payload: NewEntryInput,
     success: UpdatedPatient,
-    error: [HttpApiError.NotFound, HttpApiError.InternalServerError],
+    error: [HttpApiError.BadRequest, HttpApiError.NotFound, HttpApiError.InternalServerError],
   }),
 ) {}
 
@@ -282,7 +293,7 @@ export class HealthApi extends HttpApiGroup.make("health").add(
 
 export class PatientorApi extends HttpApi.make("patientor")
   .add(DiagnosesApi, PatientsApi, HealthApi)
-  .prefix("/api")
+  .prefix("/api/v1")
   .annotateMerge(
     OpenApi.annotations({
       title: "Patientor API",
@@ -300,8 +311,8 @@ errors.
 // src/diagnoses/api.ts
 import { Effect } from "effect";
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
-import { PatientorApi } from "../http/api.js";
-import { getDiagnoses } from "./service.js";
+import { PatientorApi } from "@patientor/api";
+import { getDiagnoses } from "./service.ts";
 
 export const DiagnosesApiLive = HttpApiBuilder.group(PatientorApi, "diagnoses", (handlers) =>
   handlers.handle("list", () =>
@@ -318,7 +329,7 @@ export const DiagnosesApiLive = HttpApiBuilder.group(PatientorApi, "diagnoses", 
 
 Behavior to preserve:
 
-- `GET /api/diagnoses` returns JSON.
+- `GET /api/v1/diagnoses` returns JSON.
 - read failures return `500`.
 
 ## 4. Implement Patient Reads
@@ -330,8 +341,8 @@ performs a database lookup.
 // src/patients/api.ts
 import { Effect } from "effect";
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
-import { PatientorApi } from "../http/api.js";
-import { PatientRepository } from "./repository.js";
+import { PatientorApi } from "@patientor/api";
+import { PatientRepository } from "./repository.ts";
 
 export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (handlers) =>
   handlers
@@ -353,7 +364,7 @@ export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (h
         const patient = yield* patients.findNonSensitiveById(params.id);
 
         if (!patient) {
-          return yield* Effect.fail(new HttpApiError.NotFound({}));
+          return yield* new HttpApiError.NotFound({});
         }
 
         return patient;
@@ -375,19 +386,39 @@ export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (h
 
 Behavior to preserve:
 
-- `GET /api/patients` does not expose `ssn`.
-- `GET /api/patients/:id` returns `404` when the patient is missing.
+- `GET /api/v1/patients` does not expose `ssn`.
+- `GET /api/v1/patients/:id` returns `404` when the patient is missing.
 - invalid UUID path params return `400`.
 - read failures return `500`.
 
 ## 5. Add Patient Creation And Entry Creation
 
-Extend the same `PatientsApiLive` chain with create handlers.
+Extend the same `PatientsApiLive` chain with create handlers. The current
+server uses `handleRaw` for writes so malformed JSON and schema-invalid JSON
+both return `400` through explicit `HttpApiError.BadRequest` mapping.
 
 ```ts
+import { Effect, Schema } from "effect";
+import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
+import { NewEntryInput, NewPatientInput } from "@patientor/api";
+
+const decodeJsonPayload =
+  <A>(schema: Schema.Schema<A>) =>
+  (request: { readonly json: Effect.Effect<unknown, unknown, unknown> }) =>
+    Effect.gen(function* () {
+      const body = yield* request.json.pipe(
+        Effect.catch(() => Effect.fail(new HttpApiError.BadRequest({}))),
+      );
+
+      return yield* Schema.decodeUnknownEffect(schema)(body).pipe(
+        Effect.catchIf(Schema.isSchemaError, () => Effect.fail(new HttpApiError.BadRequest({}))),
+      );
+    });
+
 // src/patients/api.ts, inside the same handlers chain
-.handle("create", ({ payload }) =>
+.handleRaw("create", ({ request }) =>
   Effect.gen(function* () {
+    const payload = yield* decodeJsonPayload(NewPatientInput)(request);
     const patients = yield* PatientRepository;
     return yield* patients.addPatient(payload);
   }).pipe(
@@ -400,13 +431,14 @@ Extend the same `PatientsApiLive` chain with create handlers.
     ),
   ),
 )
-.handle("addEntry", ({ params, payload }) =>
+.handleRaw("addEntry", ({ params, request }) =>
   Effect.gen(function* () {
+    const payload = yield* decodeJsonPayload(NewEntryInput)(request);
     const patients = yield* PatientRepository;
     const patient = yield* patients.addEntry(params.id, payload);
 
     if (!patient) {
-      return yield* Effect.fail(new HttpApiError.NotFound({}));
+      return yield* new HttpApiError.NotFound({});
     }
 
     return patient;
@@ -439,13 +471,13 @@ Behavior to preserve:
 
 ## 6. Add Health Handler
 
-Only include this if `/api/ping` should appear in generated docs.
+Keep this because `/api/v1/ping` appears in generated docs.
 
 ```ts
 // src/http/health-api.ts
 import { Effect } from "effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { PatientorApi } from "./api.js";
+import { PatientorApi } from "@patientor/api";
 
 export const HealthApiLive = HttpApiBuilder.group(PatientorApi, "health", (handlers) =>
   handlers.handle("ping", () => Effect.succeed("pong")),
@@ -460,15 +492,30 @@ expose generated OpenAPI JSON.
 ```ts
 // src/http/routes.ts
 import { Layer } from "effect";
+import type { FileSystem, Path } from "effect";
+import type { Etag, HttpPlatform, HttpRouter } from "effect/unstable/http";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { DiagnosesApiLive } from "../diagnoses/api.js";
-import { PatientsApiLive } from "../patients/api.js";
-import { PatientorApi } from "./api.js";
-import { HealthApiLive } from "./health-api.js";
+import { PatientorApi } from "@patientor/api";
+import { DiagnosesApiLive } from "../diagnoses/api.ts";
+import { PatientsApiLive } from "../patients/api.ts";
+import { HealthApiLive } from "./health-api.ts";
+import type { Database } from "../db/database.ts";
+import type { PatientRepository } from "../patients/repository.ts";
+
+type HttpRoutesRequirements =
+  | Database
+  | PatientRepository
+  | Etag.Generator
+  | FileSystem.FileSystem
+  | HttpPlatform.HttpPlatform
+  | HttpRouter.HttpRouter
+  | Path.Path;
 
 export const HttpRoutes = HttpApiBuilder.layer(PatientorApi, {
   openapiPath: "/openapi.json",
-}).pipe(Layer.provide([DiagnosesApiLive, PatientsApiLive, HealthApiLive]));
+}).pipe(
+  Layer.provide(Layer.mergeAll(DiagnosesApiLive, PatientsApiLive, HealthApiLive)),
+) as unknown as Layer.Layer<never, never, HttpRoutesRequirements>;
 ```
 
 The current server shape can stay close to the existing `HttpRouter.serve(...)`
@@ -478,17 +525,17 @@ setup:
 // src/http/server.ts
 import { NodeHttpServer } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
-import { HttpRouter, HttpServer } from "effect/unstable/http";
+import { HttpRouter } from "effect/unstable/http";
 import { createServer } from "node:http";
-import { AppConfigService } from "../config.js";
-import { HttpRoutes } from "./routes.js";
+import { AppConfigService } from "../config.ts";
+import { HttpRoutes } from "./routes.ts";
 
-const NodeServerLive = Layer.effect(HttpServer.HttpServer)(
+const NodeServerLive = Layer.unwrap(
   Effect.gen(function* () {
     const config = yield* AppConfigService;
-    return yield* NodeHttpServer.make(createServer, { port: config.port });
+    return NodeHttpServer.layer(createServer, { port: config.port });
   }),
-).pipe(Layer.provide(NodeHttpServer.layerHttpServices));
+);
 
 export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(Layer.provide(NodeServerLive));
 ```
@@ -510,7 +557,7 @@ behavior.
 it.effect("returns 400 for invalid patient id", () =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient;
-    const response = yield* client.get("/api/patients/not-a-uuid");
+    const response = yield* client.get("/api/v1/patients/not-a-uuid");
 
     assert.strictEqual(response.status, 400);
   }).pipe(Effect.provide(TestServerLive)),
@@ -521,7 +568,7 @@ it.effect("returns 400 for invalid patient id", () =>
 it.effect("does not expose ssn in patient list", () =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient;
-    const response = yield* client.get("/api/patients");
+    const response = yield* client.get("/api/v1/patients");
     const body = yield* response.json;
 
     assert.strictEqual(response.status, 200);
@@ -534,7 +581,7 @@ it.effect("does not expose ssn in patient list", () =>
 it.effect("returns 201 when adding a patient entry", () =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient;
-    const response = yield* client.post(`/api/patients/${patientId}/entries`, {
+    const response = yield* client.post(`/api/v1/patients/${patientId}/entries`, {
       body: HttpBody.jsonUnsafe({
         type: "HealthCheck",
         description: "Annual check",
@@ -561,9 +608,10 @@ Preserve these behaviors:
 
 ## Open Decisions
 
-- Keep `/api` or intentionally introduce `/api/v1`?
+- Keep `/api/v1` for the current public API version, or intentionally introduce
+  another version?
 - Expose `/openapi.json` in every environment or only development?
 - Derive DTO TypeScript types from schemas, or keep types and schemas side by
   side for the first migration?
-- Keep `POST /api/patients` returning the current full patient shape?
-- Include `GET /api/ping` in generated API docs?
+- Keep `POST /api/v1/patients` returning the current full patient shape?
+- Keep `GET /api/v1/ping` in generated API docs?

@@ -39,8 +39,9 @@ unless a package has a specific reason to opt out.
 ## Effect Best Practices
 
 **IMPORTANT:** This repo uses the published Effect v4 beta. The installed repo
-dependency is the source of truth for version-specific API shapes:
-`effect@^4.0.0-beta.60`.
+dependency is the source of truth for version-specific API shapes. Package
+manifests currently request `effect@^4.0.0-beta.65`, while the lockfile and
+installed `node_modules` currently resolve Effect packages to `4.0.0-beta.66`.
 
 Before writing Effect code:
 
@@ -58,7 +59,7 @@ Some older generated guidance below referenced a Windows-only shared checkout pa
 
 `C:\Users\lenny\.local\share\effect-solutions\effect`
 
-Do **not** assume that path exists. The current development environment may be Linux, and the reliable source of truth in this repo is the installed package under `node_modules/effect` plus the Patientor-specific `.best-practices/` files.
+Do **not** assume that path exists. The current development environment may differ by machine, and the reliable source of truth in this repo is the installed package under `node_modules/effect` plus the Patientor-specific `.best-practices/` files.
 
 If a Windows checkout exists on another machine, treat it as optional background context only. Always verify exact APIs against this repo's installed `node_modules` before editing code.
 

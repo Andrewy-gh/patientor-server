@@ -4,10 +4,14 @@ Patientor routes should be thin: parse request input, call a service effect, map
 
 ## Current route pattern
 
+Prefer `HttpApi` for public Patientor routes. The lower-level `HttpRouter`
+examples in this file are useful for understanding legacy `http.ts` files,
+temporary compatibility routes, or test-only routes.
+
 ```ts
 const patientsRoute = HttpRouter.route(
   "GET",
-  "/api/patients",
+  "/api/v1/patients",
   getNonSensitivePatients.pipe(
     Effect.flatMap((patients) => HttpServerResponse.json(patients)),
     Effect.catchTag("PatientReadError", (error) =>
@@ -32,7 +36,7 @@ const isRequestParseError = (error: unknown) =>
 
 const route = HttpRouter.route(
   "POST",
-  "/api/patients",
+  "/api/v1/patients",
   Effect.gen(function* () {
     const input = yield* HttpServerRequest.schemaBodyJson(NewPatientInputSchema);
     const added = yield* addNewPatient(input);
@@ -116,4 +120,7 @@ export const HttpRoutes = HttpRouter.addAll([
 ]);
 ```
 
-That keeps each feature easy to move or test independently.
+That legacy shape keeps each feature easy to move or test independently. For
+current public routes, compose the shared API contract with
+`HttpApiBuilder.layer(PatientorApi, { openapiPath: "/openapi.json" })` and
+provide the feature API handler layers.

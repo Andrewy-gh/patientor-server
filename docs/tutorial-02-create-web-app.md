@@ -1,6 +1,8 @@
 # Tutorial 02: Create `apps/web`
 
-This tutorial creates the future frontend app shell.
+This tutorial creates the frontend app shell. In the current repo, `apps/web`
+already exists and has grown beyond this minimal shell, so use this as the
+baseline shape for a fresh checkout or older branch.
 
 User impact: there is no product UI yet. The goal is a clean workspace app that
 can later import `@patientor/api` without touching server internals.
@@ -14,9 +16,10 @@ apps/web/
   vite.config.ts
   index.html
   src/
+    app/
+      app.tsx
     main.tsx
-    App.tsx
-    styles.css
+    index.css
 ```
 
 ## Step 1: Create The Folder
@@ -25,6 +28,7 @@ From the repo root:
 
 ```powershell
 New-Item -ItemType Directory -Force apps/web/src
+New-Item -ItemType Directory -Force apps/web/src/app
 ```
 
 ## Step 2: Create `apps/web/package.json`
@@ -52,11 +56,15 @@ Paste:
     "test": "vp test --passWithNoTests"
   },
   "dependencies": {
+    "@emotion/react": "catalog:",
+    "@emotion/styled": "catalog:",
+    "@mui/icons-material": "catalog:",
+    "@mui/material": "catalog:",
     "@patientor/api": "workspace:*",
     "@vitejs/plugin-react": "catalog:",
-    "effect": "^4.0.0-beta.65",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "react-router-dom": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -74,7 +82,9 @@ What you should learn:
 
 1. `@patientor/api` is a frontend dependency.
 2. The frontend imports from the API package, not from `apps/server`.
-3. `effect` is needed because API schemas are runtime values from Effect.
+3. MUI and React Router are part of the current app shell.
+4. The web app does not need a direct `effect` dependency unless it starts
+   creating Effect clients or decoding schemas at runtime.
 
 ## Step 3: Create `apps/web/tsconfig.json`
 
@@ -146,7 +156,7 @@ What you should learn:
 
 1. The frontend dev server runs on `5173`.
 2. Calls to `/api/*` are proxied to the backend on `3001`.
-3. Browser code can call `/api/patients` without hardcoding the backend URL.
+3. Browser code can call `/api/v1/patients` without hardcoding the backend URL.
 
 ## Step 5: Create `apps/web/index.html`
 
@@ -186,8 +196,8 @@ Paste:
 ```tsx
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App.js";
-import "./styles.css";
+import { App } from "./app/app.js";
+import "./index.css";
 
 const rootElement = document.getElementById("root");
 
@@ -207,7 +217,7 @@ createRoot(rootElement).render(
 Create:
 
 ```text
-apps/web/src/App.tsx
+apps/web/src/app/app.tsx
 ```
 
 Paste:
@@ -231,7 +241,7 @@ export const App = () => (
 Create:
 
 ```text
-apps/web/src/styles.css
+apps/web/src/index.css
 ```
 
 Paste:

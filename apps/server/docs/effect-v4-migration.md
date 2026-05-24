@@ -1,46 +1,49 @@
 # Effect v4 Migration Reference
 
-This guide shows the native Effect v4 shape for migrating this server away from Express/Kysely globals. The goal is not a full rewrite in one pass. The goal is to move the main IO boundaries into Effect first: config, database, dependency injection, and HTTP server startup.
+This guide records the native Effect v4 shape used to move this server away
+from Express/Kysely globals. The server now runs on Effect HTTP and implements
+the public contract from `@patientor/api`, so treat the older `HttpRouter`
+examples below as background for legacy route files rather than the preferred
+direction for new route work.
 
 The user impact should be boring in the best way: the API keeps returning the same JSON, but the code becomes easier to test because config, database access, and routes are wired through layers instead of hidden imports.
 
 ## Current Constraints
 
-- Package is ESM, so relative TypeScript imports need `.js` extensions.
+- Package is ESM. Server source currently imports relative TypeScript modules
+  with `.ts`; the server `tsconfig.json` uses `rewriteRelativeImportExtensions`
+  so build output gets runtime-safe extensions.
 - TypeScript uses `NodeNext`.
-- Effect is `effect@4.0.0-beta.60`.
+- Package manifests request `effect@^4.0.0-beta.65`; the current lockfile and
+  installed `node_modules` resolve Effect packages to `4.0.0-beta.66`.
 - Use Effect v4 `Context.Service`, not `Context.Tag`.
 - Use Effect v4 `Effect.catch`, not `Effect.catchAll`. In this beta,
   `Effect.catch` is the public replacement for the Effect 3 `catchAll` API.
   Use `Effect.catchTag` when handling one tagged error type such as
   `DiagnosisReadError`.
-- Use `@effect/vitest@4.0.0-beta.60` for tests. It provides Effect-aware `it.effect`, `layer`, and `assert` helpers on top of the Vitest runner.
-- The `vitest` CLI still runs tests because `@effect/vitest` has Vitest as a peer dependency. Keep the `npm test` script as `vitest run`, but import test APIs from `@effect/vitest`, not `vitest`.
-- The repo currently depends on `effect`, but native Node HTTP examples require `@effect/platform-node`.
-- Do not install `@effect/platform-node` without a version. The current `latest` line targets Effect 3, which is wrong for this repo.
+- Use `@effect/vitest` for tests. It provides Effect-aware `it.effect`, `layer`, and `assert` helpers on top of the Vitest runner.
+- The repo uses Vite+ test commands. Keep package scripts on `vp test`, but import test APIs from `@effect/vitest`, not `vitest`.
+- The repo already depends on `@effect/platform-node` for native Node HTTP, Node services, and test servers.
 
-Install the Effect test integration before writing migrated tests:
-
-```bash
-npm install --save-dev @effect/vitest@4.0.0-beta.60
-```
-
-Install the platform package before switching the HTTP server:
+If dependency versions drift, keep the Effect packages aligned with the
+currently installed beta:
 
 ```bash
-npm install @effect/platform-node@4.0.0-beta.60
+pnpm add -D --filter server @effect/vitest@4.0.0-beta.66
+pnpm add --filter server @effect/platform-node@4.0.0-beta.66
 ```
 
-This keeps `@effect/platform-node` aligned with `effect@^4.0.0-beta.60`.
-
-I tried the repo-local `effect-solutions` command through `npm exec -- effect-solutions list`, but the binary reports `Unsupported platform: win32-x64` on this machine. The examples below are based on the local Effect v4 source checkout at `C:\Users\lenny\.local\share\effect-solutions\effect`, especially the `ai-docs/src/51_http-server` examples and the platform-node HTTP tests.
+This keeps `@effect/platform-node` aligned with the installed `effect` version.
+Verify exact APIs against `apps/server/node_modules/effect` and
+`apps/server/node_modules/@effect/platform-node`.
 
 ## Migration Order
 
 1. Replace manual env parsing with native `Config`.
 2. Wrap Kysely in a `Database` service layer.
 3. Convert one service at a time to consume dependencies with `yield* Database`.
-4. Replace one Express route at a time with `HttpRouter` routes.
+4. Implement public routes with the shared `PatientorApi` contract and
+   `HttpApiBuilder`.
 5. Launch the app with `Layer.launch(...).pipe(NodeRuntime.runMain)`.
 
 That keeps the migration small while still using native Effect patterns where they matter most.
@@ -61,12 +64,14 @@ migrated to `Config` or you keep `dotenv` temporarily for that legacy path.
 
 ```ts
 // src/config.ts
-import { Config, Context, Effect, Layer } from "effect";
+import { Config, Context, Layer } from "effect";
 
 export interface AppConfig {
   readonly port: number;
   readonly databaseUrl: string;
   readonly nodeEnv: string;
+  readonly tracingEnabled: boolean;
+  readonly otlpEndpoint: string;
 }
 
 export class AppConfigService extends Context.Service<AppConfigService, AppConfig>()("AppConfig") {}
@@ -75,25 +80,27 @@ const appConfig = Config.all({
   port: Config.number("PORT").pipe(Config.withDefault(3001)),
   databaseUrl: Config.string("DATABASE_URL"),
   nodeEnv: Config.string("NODE_ENV").pipe(Config.withDefault("development")),
+  tracingEnabled: Config.boolean("TRACING_ENABLED").pipe(Config.withDefault(false)),
+  otlpEndpoint: Config.string("OTEL_EXPORTER_OTLP_ENDPOINT").pipe(
+    Config.withDefault("http://localhost:4318"),
+  ),
 });
 
-const makeConfig = Effect.gen(function* () {
-  return yield* appConfig;
-});
-
-export const AppConfigLive = Layer.effect(AppConfigService)(makeConfig);
+export const AppConfigLive = Layer.effect(AppConfigService)(appConfig);
 ```
 
 For tests, provide a controlled config value:
 
 ```ts
 import { Layer } from "effect";
-import { AppConfigService } from "../src/config.js";
+import { AppConfigService } from "../src/config.ts";
 
 export const TestConfigLive = Layer.succeed(AppConfigService)({
   port: 0,
   databaseUrl: "postgres://test:test@localhost:5432/test",
   nodeEnv: "test",
+  tracingEnabled: false,
+  otlpEndpoint: "http://localhost:4318",
 });
 ```
 
@@ -101,7 +108,7 @@ Use `ConfigProvider.layer(...)` when you want to test the config parser itself:
 
 ```ts
 import { ConfigProvider, Effect } from "effect";
-import { AppConfigLive, AppConfigService } from "../src/config.js";
+import { AppConfigLive, AppConfigService } from "../src/config.ts";
 
 const provider = ConfigProvider.fromEnv({
   env: {
@@ -147,8 +154,8 @@ The database should be an Effect service because it is a shared IO dependency. C
 import { Context, Effect, Layer } from "effect";
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
-import { AppConfigService } from "../config.js";
-import { DB } from "./generated.js";
+import { AppConfigService } from "../config.ts";
+import { DB } from "./generated.ts";
 
 export class Database extends Context.Service<Database, Kysely<DB>>()("Database") {}
 
@@ -222,7 +229,7 @@ Effect-returning function.
 ```ts
 // src/services/diagnosisService.ts
 import { Data, Effect } from "effect";
-import { Database } from "../db/database.js";
+import { Database } from "../db/database.ts";
 
 export class DiagnosisReadError extends Data.TaggedClass("DiagnosisReadError")<{
   readonly cause: unknown;
@@ -280,7 +287,12 @@ export class DiagnosisReadError extends Data.TaggedClass("DiagnosisReadError")<{
 
 ## 4. Native HTTP Routes
 
-Native Effect HTTP uses `HttpRouter` and `HttpServerResponse` from `effect/unstable/http`, plus `NodeHttpServer` and `NodeRuntime` from `@effect/platform-node`.
+Native Effect HTTP uses `HttpRouter` and `HttpServerResponse` from
+`effect/unstable/http`, plus `NodeHttpServer` and `NodeRuntime` from
+`@effect/platform-node`. Patientor's preferred route implementation is now
+`HttpApiBuilder` through `packages/api/src/patientor-api.ts`; use this section
+only for understanding or temporarily maintaining the older `http.ts` route
+files.
 
 Start with the simple routes before moving request body parsing and patient validation.
 
@@ -288,13 +300,13 @@ Start with the simple routes before moving request body parsing and patient vali
 // src/http/routes.ts
 import { Effect } from "effect";
 import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
-import { getDiagnoses } from "../services/diagnosisService.js";
+import { getDiagnoses } from "../diagnoses/service.ts";
 
-const pingRoute = HttpRouter.route("GET", "/api/ping", HttpServerResponse.text("pong"));
+const pingRoute = HttpRouter.route("GET", "/api/v1/ping", HttpServerResponse.text("pong"));
 
 const diagnosesRoute = HttpRouter.route(
   "GET",
-  "/api/diagnoses",
+  "/api/v1/diagnoses",
   getDiagnoses.pipe(
     Effect.flatMap((diagnoses) => HttpServerResponse.json(diagnoses)),
     Effect.catchTag("DiagnosisReadError", (error) =>
@@ -314,10 +326,10 @@ If TypeScript complains about `HttpRouter.addAll` shape, use the lower-level bui
 ```ts
 export const HttpRoutes = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    yield* router.add("GET", "/api/ping", HttpServerResponse.text("pong"));
+    yield* router.add("GET", "/api/v1/ping", HttpServerResponse.text("pong"));
     yield* router.add(
       "GET",
-      "/api/diagnoses",
+      "/api/v1/diagnoses",
       getDiagnoses.pipe(Effect.flatMap((diagnoses) => HttpServerResponse.json(diagnoses))),
     );
   }),
@@ -326,17 +338,17 @@ export const HttpRoutes = HttpRouter.use((router) =>
 
 Prefer the first style if it typechecks cleanly in this repo; prefer the builder style when adding many related routes.
 
-While Express is still in place, the route needs a small bridge at the route
-edge. Do not import a default `diagnosisService` object after migrating the
-service to named Effect exports.
+The Express bridge below is historical. Keep it only if you are reading or
+rescuing an old branch that still has Express in place. Do not use it for new
+Patientor route work.
 
 ```ts
 // src/routes/diagnoses.ts
 import { Effect, Layer } from "effect";
 import express from "express";
-import { AppConfigLive } from "../config.js";
-import { DatabaseLive } from "../db/database.js";
-import { getDiagnoses } from "../services/diagnosisService.js";
+import { AppConfigLive } from "../config.ts";
+import { DatabaseLive } from "../db/database.ts";
+import { getDiagnoses } from "../diagnoses/service.ts";
 
 const router = express.Router();
 const RouteLive = DatabaseLive.pipe(Layer.provide(AppConfigLive));
@@ -372,10 +384,13 @@ This is the native Effect replacement for `app.listen(...)`.
 ```ts
 // src/layers.ts
 import { Layer } from "effect";
-import { AppConfigLive } from "./config.js";
-import { DatabaseLive } from "./db/database.js";
+import { AppConfigLive } from "./config.ts";
+import { DatabaseLive } from "./db/database.ts";
+import { PatientRepositoryLive } from "./patients/repository.ts";
 
-export const AppLive = DatabaseLive.pipe(Layer.provideMerge(AppConfigLive));
+const DatabaseLayer = DatabaseLive.pipe(Layer.provideMerge(AppConfigLive));
+
+export const AppLive = PatientRepositoryLive.pipe(Layer.provideMerge(DatabaseLayer));
 ```
 
 Use `Layer.mergeAll` only for independent layers. It starts the layers in
@@ -388,22 +403,23 @@ right order and still keeps both services available to the app.
 // src/http/server.ts
 import { NodeHttpServer } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
-import { HttpRouter, HttpServer } from "effect/unstable/http";
+import { HttpRouter } from "effect/unstable/http";
 import { createServer } from "node:http";
-import { AppConfigService } from "../config.js";
-import { HttpRoutes } from "./routes.js";
+import { AppConfigService } from "../config.ts";
+import { HttpRoutes } from "./routes.ts";
 
-const NodeServerLive = Layer.effect(HttpServer.HttpServer)(
+const NodeServerLive = Layer.unwrap(
   Effect.gen(function* () {
     const config = yield* AppConfigService;
-    return yield* NodeHttpServer.make(createServer, { port: config.port });
+    return NodeHttpServer.layer(createServer, { port: config.port });
   }),
-).pipe(Layer.provide(NodeHttpServer.layerHttpServices));
+);
 
 export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(Layer.provide(NodeServerLive));
 ```
 
-Depending on the exact `@effect/platform-node` beta API available after install, the server layer may also be expressible directly:
+For fixed-port tests or tiny examples, the server layer can also be provided
+directly:
 
 ```ts
 export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(
@@ -411,25 +427,22 @@ export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(
 );
 ```
 
-The dynamic-port version is better for this repo because the port comes from native config.
-
-Important v4 beta type note: `NodeHttpServer.make(...)` returns an `Effect`
-that builds the server service. Inside `Effect.gen`, use
-`return yield* NodeHttpServer.make(...)`. Returning `NodeHttpServer.make(...)`
-directly makes the layer provide an Effect value instead of an HTTP server
-service, which can surface as an unsafe-argument lint warning or a nested
-`Effect<Effect<...>>` type error.
+The dynamic-port version is better for this repo because the port comes from
+native config. In the installed package, `NodeHttpServer.layer(...)` returns the
+server layer, so `Layer.unwrap(...)` is the local helper that turns the
+config-reading effect into the layer `HttpRouter.serve(...)` needs.
 
 ```ts
 // src/index.ts
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { ConfigProvider, Layer } from "effect";
-import { AppLive } from "./layers.js";
-import { HttpServerLive } from "./http/server.js";
+import { HttpServerLive } from "./http/server.ts";
+import { AppLive } from "./layers.ts";
+import { ObservabilityLive } from "./observability.ts";
 
 const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), { asPrimary: true });
 
-const MainLive = HttpServerLive.pipe(
+const MainLive = Layer.mergeAll(HttpServerLive, ObservabilityLive).pipe(
   Layer.provide(AppLive),
   Layer.provide(DotEnvLive),
   Layer.provide(NodeServices.layer),
@@ -470,7 +483,10 @@ Do not introduce repositories, managers, custom runtimes, or broad service abstr
 
 ## 8. Testing Pattern
 
-Use `@effect/vitest` for migrated tests. It still runs through the Vitest CLI, but the test code gets Effect-native helpers. Put tests in the existing `tests/` folder, and put reusable test layers in `tests/support/` when more than one test file needs them.
+Use `@effect/vitest` for migrated tests. The server test script runs
+`cross-env NODE_ENV=test vp test`, and the test code gets Effect-native helpers.
+Put tests in `apps/server/tests/`, and put reusable test layers in a support
+folder when more than one test file needs them.
 
 For plain synchronous tests, import from `@effect/vitest` and use `assert`:
 
@@ -488,8 +504,8 @@ For Effect service tests, use `it.effect` and provide fake dependencies with `La
 ```ts
 import { Effect, Layer } from "effect";
 import { assert, describe, it } from "@effect/vitest";
-import { Database } from "../src/db/database.js";
-import { getDiagnoses } from "../src/services/diagnosisService.js";
+import { Database } from "../src/db/database.ts";
+import { getDiagnoses } from "../src/diagnoses/service.ts";
 
 describe("getDiagnoses", () => {
   it.effect("returns diagnoses without empty latin fields", () =>
@@ -519,7 +535,7 @@ Use `layer(...)` from `@effect/vitest` when a group of tests should share one co
 ```ts
 import { assert, layer } from "@effect/vitest";
 import { Effect, Layer } from "effect";
-import { Database } from "../src/db/database.js";
+import { Database } from "../src/db/database.ts";
 
 layer(Layer.succeed(Database)(fakeDb as never))("Database", (it) => {
   it.effect("can access the shared fake database", () =>
@@ -553,10 +569,18 @@ For HTTP tests after installing `@effect/platform-node`, use `NodeHttpServer.lay
 
 ## 9. Decision Points
 
-Move to native HTTP when you want Effect to own request lifecycle, interruption, structured errors, and server shutdown.
+Native HTTP is now the server default. Keep `HttpRouter` examples around only
+for legacy route files and low-level tests; prefer `HttpApi` for new public API
+work.
 
-Keep Express temporarily if the product risk is route behavior churn. In that case, bridge only at the route edge with `Effect.runPromise`.
+Use `HttpApi` when the route belongs to the shared product contract in
+`@patientor/api`. It gives Patientor schema-first endpoints, generated OpenAPI,
+and a typed client path for frontend work.
 
-Use native `HttpApi` later if you want schema-first endpoints and generated clients. For this migration, `HttpRouter` is the smaller step.
+Use low-level `HttpRouter` directly only for short-lived compatibility code,
+test scaffolding, or truly local routes that should not be part of the public
+API contract.
 
-Use `Schema` for request and response validation once route behavior is stable. Do not force every existing type through Schema on day one.
+Use `Schema` for untrusted request data and public response shapes. Keep pure
+database mapping code in ordinary TypeScript when no runtime validation is
+needed.

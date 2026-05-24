@@ -9,10 +9,11 @@ future frontend can use.
 
 ## What You Will Change
 
-You will add new implementation files next to the current HTTP files, then swap
-the server over once the new route layer passes checks.
+The migration files already exist in the current codebase. Use this tutorial as
+a current-shape walkthrough, or as a checklist when rebasing an older branch
+that still uses hand-built `HttpRouter` routes.
 
-Files to create:
+Existing migrated files to inspect or update:
 
 ```text
 apps/server/src/diagnoses/api.ts
@@ -20,7 +21,7 @@ apps/server/src/patients/api.ts
 apps/server/src/http/health-api.ts
 ```
 
-Files to edit:
+Server wiring files:
 
 ```text
 apps/server/src/http/routes.ts
@@ -73,7 +74,7 @@ Paste this:
 import { Effect } from "effect";
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
 import { PatientorApi } from "@patientor/api";
-import { getDiagnoses } from "./service.js";
+import { getDiagnoses } from "./service.ts";
 
 export const DiagnosesApiLive = HttpApiBuilder.group(PatientorApi, "diagnoses", (handlers) =>
   handlers.handle("list", () =>
@@ -116,15 +117,28 @@ apps/server/src/patients/api.ts
 Paste this:
 
 ```ts
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi";
-import { PatientorApi } from "@patientor/api";
-import { PatientRepository } from "./repository.js";
+import { NewEntryInput, NewPatientInput, PatientorApi } from "@patientor/api";
+import { PatientRepository } from "./repository.ts";
 
 const internalServerError = (error: unknown) =>
   Effect.logError(error).pipe(
     Effect.flatMap(() => Effect.fail(new HttpApiError.InternalServerError({}))),
   );
+
+const decodeJsonPayload =
+  <A>(schema: Schema.Schema<A>) =>
+  (request: { readonly json: Effect.Effect<unknown, unknown, unknown> }) =>
+    Effect.gen(function* () {
+      const body = yield* request.json.pipe(
+        Effect.catch(() => Effect.fail(new HttpApiError.BadRequest({}))),
+      );
+
+      return yield* Schema.decodeUnknownEffect(schema)(body).pipe(
+        Effect.catchIf(Schema.isSchemaError, () => Effect.fail(new HttpApiError.BadRequest({}))),
+      );
+    });
 
 export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (handlers) =>
   handlers
@@ -140,7 +154,7 @@ export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (h
         const patient = yield* patients.findNonSensitiveById(params.id);
 
         if (!patient) {
-          return yield* Effect.fail(new HttpApiError.NotFound({}));
+          return yield* new HttpApiError.NotFound({});
         }
 
         return patient;
@@ -149,19 +163,21 @@ export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (h
         Effect.catchTag("InvalidPatientEntry", internalServerError),
       ),
     )
-    .handle("create", ({ payload }) =>
+    .handleRaw("create", ({ request }) =>
       Effect.gen(function* () {
+        const payload = yield* decodeJsonPayload(NewPatientInput)(request);
         const patients = yield* PatientRepository;
         return yield* patients.addPatient(payload);
       }).pipe(Effect.catchTag("PatientWriteError", internalServerError)),
     )
-    .handle("addEntry", ({ params, payload }) =>
+    .handleRaw("addEntry", ({ params, request }) =>
       Effect.gen(function* () {
+        const payload = yield* decodeJsonPayload(NewEntryInput)(request);
         const patients = yield* PatientRepository;
         const patient = yield* patients.addEntry(params.id, payload);
 
         if (!patient) {
-          return yield* Effect.fail(new HttpApiError.NotFound({}));
+          return yield* new HttpApiError.NotFound({});
         }
 
         return patient;
@@ -176,8 +192,8 @@ export const PatientsApiLive = HttpApiBuilder.group(PatientorApi, "patients", (h
 What you should learn:
 
 1. `params` comes from `PatientIdParams` in `@patientor/api`.
-2. `payload` comes from `NewPatientInput` or `NewEntryInput` in
-   `@patientor/api`.
+2. Write handlers use `handleRaw` so malformed JSON and schema-invalid JSON
+   both become explicit `400` responses.
 3. The repository still owns database translation.
 4. The API handler only coordinates request data, repository calls, and HTTP
    errors.
@@ -228,15 +244,30 @@ Replace the old `HttpRouter.addAll(...)` route list with:
 
 ```ts
 import { Layer } from "effect";
+import type { FileSystem, Path } from "effect";
+import type { Etag, HttpPlatform, HttpRouter } from "effect/unstable/http";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { PatientorApi } from "@patientor/api";
-import { DiagnosesApiLive } from "../diagnoses/api.js";
-import { PatientsApiLive } from "../patients/api.js";
-import { HealthApiLive } from "./health-api.js";
+import { DiagnosesApiLive } from "../diagnoses/api.ts";
+import { PatientsApiLive } from "../patients/api.ts";
+import { HealthApiLive } from "./health-api.ts";
+import type { Database } from "../db/database.ts";
+import type { PatientRepository } from "../patients/repository.ts";
+
+type HttpRoutesRequirements =
+  | Database
+  | PatientRepository
+  | Etag.Generator
+  | FileSystem.FileSystem
+  | HttpPlatform.HttpPlatform
+  | HttpRouter.HttpRouter
+  | Path.Path;
 
 export const HttpRoutes = HttpApiBuilder.layer(PatientorApi, {
   openapiPath: "/openapi.json",
-}).pipe(Layer.provide([DiagnosesApiLive, PatientsApiLive, HealthApiLive]));
+}).pipe(
+  Layer.provide(Layer.mergeAll(DiagnosesApiLive, PatientsApiLive, HealthApiLive)),
+) as unknown as Layer.Layer<never, never, HttpRoutesRequirements>;
 ```
 
 What you should learn:
@@ -263,28 +294,28 @@ Open:
 apps/server/src/http/server.ts
 ```
 
-The current file serves an `HttpRouter` value. After Step 5, `HttpRoutes` may be
-a layer. If TypeScript asks for a different shape, update the file to follow the
-installed Effect v4 types.
+The current file serves the `HttpApiBuilder.layer(...)` route layer through
+`HttpRouter.serve(...)`. Keep that shape unless the installed Effect types
+change.
 
 Use this as the target shape:
 
 ```ts
 import { NodeHttpServer } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
-import { HttpServer } from "effect/unstable/http";
+import { HttpRouter } from "effect/unstable/http";
 import { createServer } from "node:http";
-import { AppConfigService } from "../config.js";
-import { HttpRoutes } from "./routes.js";
+import { AppConfigService } from "../config.ts";
+import { HttpRoutes } from "./routes.ts";
 
-const NodeServerLive = Layer.effect(HttpServer.HttpServer)(
+const NodeServerLive = Layer.unwrap(
   Effect.gen(function* () {
     const config = yield* AppConfigService;
-    return yield* NodeHttpServer.make(createServer, { port: config.port });
+    return NodeHttpServer.layer(createServer, { port: config.port });
   }),
-).pipe(Layer.provide(NodeHttpServer.layerHttpServices));
+);
 
-export const HttpServerLive = HttpRoutes.pipe(Layer.provide(NodeServerLive));
+export const HttpServerLive = HttpRouter.serve(HttpRoutes).pipe(Layer.provide(NodeServerLive));
 ```
 
 Important: trust the installed package types over this example. If an API name
@@ -309,10 +340,9 @@ Then try tests:
 pnpm --filter server test
 ```
 
-At the time this tutorial was written, the server test command fails before
-running assertions because of an existing Vitest runner setup issue. If that is
-still true, record the failure and continue only after product behavior has been
-manually smoke-tested.
+Current server tests cover the migrated route behavior, including invalid IDs,
+malformed JSON, schema-invalid JSON, missing patients, `201` entry creation,
+and no `ssn` exposure.
 
 ## Step 8: Smoke Test Manually
 
@@ -325,17 +355,17 @@ pnpm dev
 In another terminal, run:
 
 ```powershell
-Invoke-RestMethod http://localhost:3001/api/ping
-Invoke-RestMethod http://localhost:3001/api/diagnoses
-Invoke-RestMethod http://localhost:3001/api/patients
+Invoke-RestMethod http://localhost:3001/api/v1/ping
+Invoke-RestMethod http://localhost:3001/api/v1/diagnoses
+Invoke-RestMethod http://localhost:3001/api/v1/patients
 Invoke-RestMethod http://localhost:3001/openapi.json
 ```
 
 Expected behavior:
 
-1. `/api/ping` returns `pong`.
-2. `/api/diagnoses` returns diagnosis JSON.
-3. `/api/patients` returns patient JSON without `ssn`.
+1. `/api/v1/ping` returns `pong`.
+2. `/api/v1/diagnoses` returns diagnosis JSON.
+3. `/api/v1/patients` returns patient JSON without `ssn`.
 4. `/openapi.json` returns generated API documentation.
 
 ## Step 9: Delete Old Router Files Only After Success

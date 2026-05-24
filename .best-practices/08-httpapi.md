@@ -24,8 +24,9 @@ behavior stable unless a route needs a product behavior change.
 
 ## Installed API shape
 
-This repo uses `effect@4.0.0-beta.65`. The installed source of truth is
-`node_modules/effect`, not older examples.
+The package manifests request `effect@^4.0.0-beta.65`, and the current lockfile
+and `node_modules` resolve Effect packages to `4.0.0-beta.66`. The installed
+source of truth is `node_modules/effect`, not older examples.
 
 The installed package exports HttpApi from:
 
@@ -65,12 +66,12 @@ product explicitly chooses versioned URLs.
 
 Recommended order:
 
-1. `GET /api/diagnoses`
-2. `GET /api/patients`
-3. `GET /api/patients/:id`
-4. `POST /api/patients`
-5. `POST /api/patients/:id/entries`
-6. `GET /api/ping`, if the health check should remain public
+1. `GET /api/v1/diagnoses`
+2. `GET /api/v1/patients`
+3. `GET /api/v1/patients/:id`
+4. `POST /api/v1/patients`
+5. `POST /api/v1/patients/:id/entries`
+6. `GET /api/v1/ping`, if the health check should remain public
 
 For every migrated route, preserve the current status behavior with regression
 tests before removing the old `HttpRouter` route:

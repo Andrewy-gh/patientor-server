@@ -42,13 +42,15 @@ The API package foundation is in place:
 5. A server-side type guard checks that API `Gender` and generated DB `Gender`
    stay aligned.
 
-These slices are still future work:
+These slices are now also in place:
 
-1. Migrating server route wiring from `HttpRouter` to `HttpApiBuilder` using
-   `PatientorApi`.
-2. Creating `apps/web`.
-3. Wiring the frontend to consume `@patientor/api`.
-4. Adding `packages/db`, but only if another trusted backend runtime needs
+1. Server route wiring uses `HttpApiBuilder` with `PatientorApi`.
+2. `apps/web` exists.
+3. The frontend consumes public API types from `@patientor/api`.
+
+This slice is still future work:
+
+1. Adding `packages/db`, but only if another trusted backend runtime needs
    direct database access.
 
 ## Why This Package Exists
@@ -103,9 +105,8 @@ piece is available. That includes the public API handlers, database access,
 configuration, and the Node HTTP server. Effect makes that startup safety
 visible in types.
 
-For a team-friendly visual walkthrough, open
-`docs/effect-app-construction-presentation.html`. It covers the same model as a
-slide deck for both technical and non-technical reviewers.
+For a team-friendly walkthrough, the sections below cover the startup model for
+both technical and non-technical reviewers.
 
 Think of the startup files as three different ownership layers:
 
@@ -136,9 +137,9 @@ This is the right kind of shape:
 
 ```ts
 import { Layer } from "effect";
-import { AppConfigLive } from "./config.js";
-import { DatabaseLive } from "./db/database.js";
-import { PatientRepositoryLive } from "./patients/repository.js";
+import { AppConfigLive } from "./config.ts";
+import { DatabaseLive } from "./db/database.ts";
+import { PatientRepositoryLive } from "./patients/repository.ts";
 
 const DatabaseLayer = DatabaseLive.pipe(Layer.provideMerge(AppConfigLive));
 
@@ -163,8 +164,8 @@ import { NodeHttpServer } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
 import { HttpRouter } from "effect/unstable/http";
 import { createServer } from "node:http";
-import { AppConfigService } from "../config.js";
-import { HttpRoutes } from "./routes.js";
+import { AppConfigService } from "../config.ts";
+import { HttpRoutes } from "./routes.ts";
 
 const NodeServerLive = Layer.unwrap(
   Effect.gen(function* () {
@@ -193,14 +194,15 @@ already-composed server.
 ```ts
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { ConfigProvider, Layer } from "effect";
-import { HttpServerLive } from "./http/server.js";
-import { AppLive } from "./layers.js";
+import { HttpServerLive } from "./http/server.ts";
+import { AppLive } from "./layers.ts";
+import { ObservabilityLive } from "./observability.ts";
 
 const DotEnvLive = ConfigProvider.layerAdd(ConfigProvider.fromDotEnv(), {
   asPrimary: true,
 });
 
-const MainLive = HttpServerLive.pipe(
+const MainLive = Layer.mergeAll(HttpServerLive, ObservabilityLive).pipe(
   Layer.provide(AppLive),
   Layer.provide(DotEnvLive),
   Layer.provide(NodeServices.layer),
@@ -336,8 +338,9 @@ What each important field does:
 6. `"build": "vp pack"` uses Vite+ to build this package.
 7. `"effect"` is a runtime dependency because the schemas come from Effect.
 
-Keep the `effect` version aligned with `apps/server/package.json`. At the time
-of writing, this repo uses `effect@^4.0.0-beta.65`.
+Keep the `effect` version aligned with `apps/server/package.json`. The package
+manifests currently request `effect@^4.0.0-beta.65`, while the lockfile and
+installed packages resolve Effect to `4.0.0-beta.66`.
 
 After editing package files, refresh workspace installs:
 
@@ -679,11 +682,11 @@ What this means:
 1. `Patient` includes `ssn`, because creating a patient currently returns the
    full patient shape.
 2. `NonSensitivePatient` excludes `ssn` and `entries`, so it is safe for
-   `GET /api/patients`.
+   `GET /api/v1/patients`.
 3. `NonSensitivePatientWithEntries` excludes `ssn` but includes entries, so it
-   is safe for `GET /api/patients/:id`.
-4. `NewPatientInput` is the `POST /api/patients` request body.
-5. `NewEntryInput` is the `POST /api/patients/:id/entries` request body.
+   is safe for `GET /api/v1/patients/:id`.
+4. `NewPatientInput` is the `POST /api/v1/patients` request body.
+5. `NewEntryInput` is the `POST /api/v1/patients/:id/entries` request body.
 6. `PatientIdParams` validates the `:id` path parameter.
 7. `CreatedPatient` and `UpdatedPatient` tell HttpApi those successful JSON
    responses should use HTTP `201 Created`.
@@ -742,13 +745,13 @@ export class PatientsApi extends HttpApiGroup.make("patients").add(
   HttpApiEndpoint.post("create", "/patients", {
     payload: NewPatientInput,
     success: CreatedPatient,
-    error: HttpApiError.InternalServerError,
+    error: [HttpApiError.BadRequest, HttpApiError.InternalServerError],
   }),
   HttpApiEndpoint.post("addEntry", "/patients/:id/entries", {
     params: PatientIdParams,
     payload: NewEntryInput,
     success: UpdatedPatient,
-    error: [HttpApiError.NotFound, HttpApiError.InternalServerError],
+    error: [HttpApiError.BadRequest, HttpApiError.NotFound, HttpApiError.InternalServerError],
   }),
 ) {}
 
@@ -760,7 +763,7 @@ export class HealthApi extends HttpApiGroup.make("health").add(
 
 export class PatientorApi extends HttpApi.make("patientor")
   .add(DiagnosesApi, PatientsApi, HealthApi)
-  .prefix("/api")
+  .prefix("/api/v1")
   .annotateMerge(
     OpenApi.annotations({
       title: "Patientor API",
@@ -772,8 +775,9 @@ export class PatientorApi extends HttpApi.make("patientor")
 What this means:
 
 1. The route group names, like `"patients"`, are typed names for handlers.
-2. The public paths stay `/api/patients`, `/api/diagnoses`, and `/api/ping`.
-3. `.prefix("/api")` adds the shared `/api` prefix once.
+2. The public paths stay `/api/v1/patients`, `/api/v1/diagnoses`, and
+   `/api/v1/ping`.
+3. `.prefix("/api/v1")` adds the shared versioned prefix once.
 4. Handler files will later refer to endpoint names like `"list"`, `"get"`,
    `"create"`, and `"addEntry"`.
 5. This is where generated OpenAPI documentation can get its route shapes.
@@ -901,12 +905,12 @@ NonSensitivePatientWithEntries
 Keep these public paths unchanged:
 
 ```text
-GET /api/ping
-GET /api/diagnoses
-GET /api/patients
-GET /api/patients/:id
-POST /api/patients
-POST /api/patients/:id/entries
+GET /api/v1/ping
+GET /api/v1/diagnoses
+GET /api/v1/patients
+GET /api/v1/patients/:id
+POST /api/v1/patients
+POST /api/v1/patients/:id/entries
 ```
 
 The frontend package preparation should not change product behavior. It should

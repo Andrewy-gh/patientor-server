@@ -78,7 +78,7 @@ export const NewPatientInputSchema = Schema.Struct({
 
 ## Entry creation body
 
-When Patientor adds an endpoint like `POST /api/patients/:id/entries`, model the discriminated union directly:
+For endpoints like `POST /api/v1/patients/:id/entries`, model the discriminated union directly:
 
 ```ts
 const BaseEntryInput = {

@@ -5,10 +5,22 @@ as a LocalStack replacement for the backend deploy path.
 
 ## Outcome
 
-Floci is usable for the ECS spike, but the local ECR setup needs path-style
-repository URIs and a small loopback proxy for Floci's ECR control plane.
+Floci is usable for the ECS spike, but this Windows Docker Desktop setup needs
+some non-standard wiring:
 
-Use this image reference in ECS task definitions:
+- path-style ECR repository URIs for Docker push/pull
+- an ECR loopback proxy when troubleshooting Floci's ECR control plane
+- an ECS host-access proxy when a task starts but its port is not published to
+  the Windows host
+
+For the ECS runtime spike, the most reliable image reference so far is the
+local Docker image:
+
+```text
+patientor-server:local
+```
+
+For ECR push/pull testing, use this path-style image reference:
 
 ```text
 localhost:5100/000000000000/us-east-1/patientor/server:local
@@ -33,6 +45,7 @@ environment:
   FLOCI_STORAGE_MODE: persistent
   FLOCI_STORAGE_PERSISTENT_PATH: /app/data
   FLOCI_SERVICES_DOCKER_NETWORK: patientor-server_default
+  FLOCI_SERVICES_ECS_DOCKER_NETWORK: patientor-server_default
   FLOCI_SERVICES_ECR_DOCKER_NETWORK: patientor-server_default
   FLOCI_SERVICES_ECR_URI_STYLE: path
 ```
@@ -118,7 +131,7 @@ DescribeImages tag enumeration failed for patientor/server: null
 ECR reconcile-on-startup failed: null
 ```
 
-## Loopback Proxy Workaround
+## ECR Loopback Proxy Workaround
 
 Run a small proxy in the Floci container's network namespace. It listens on
 `localhost:5100` from Floci's point of view and forwards to Docker Desktop's host
@@ -134,7 +147,7 @@ docker run -d `
 ```
 
 After this proxy is running, Floci's ECR control plane can enumerate the pushed
-image:
+image if the registry path and Floci's internal registry lookup are aligned:
 
 ```powershell
 aws ecr list-images `
@@ -150,6 +163,15 @@ aws ecr describe-images `
 
 Expected result: both commands include the `local` image tag.
 
+Observed caveat: if these commands still return empty image lists while the raw
+registry has the tag, treat ECR metadata enumeration as unresolved and continue
+the ECS spike with `patientor-server:local`. The raw registry path can still be
+validated independently with:
+
+```powershell
+curl.exe http://localhost:5100/v2/000000000000/us-east-1/patientor/server/tags/list
+```
+
 If the proxy already exists and needs to be recreated:
 
 ```powershell
@@ -160,23 +182,140 @@ Then run the proxy command again.
 
 ## ECS Spike Guidance
 
-This should not block the ECS spike.
+The ECR metadata issue should not block the ECS spike.
 
-Use the path-style image reference directly in the ECS task definition:
+Use the local backend image directly in the ECS task definition:
 
 ```text
-localhost:5100/000000000000/us-east-1/patientor/server:local
+patientor-server:local
 ```
 
-Before running the ECS task, verify Docker can pull the exact image:
+Before running the ECS task, verify Docker has the image:
 
 ```powershell
-docker pull localhost:5100/000000000000/us-east-1/patientor/server:local
+docker image inspect patientor-server:local
 ```
 
 Floci ECS creates Docker containers from the task definition image string. The
 proxy is mainly needed for Floci's ECR API metadata calls, not for the host-side
 Docker push itself.
+
+Register the task definition with a direct local image reference:
+
+```powershell
+aws ecs register-task-definition `
+  --family patientor-server `
+  --network-mode bridge `
+  --container-definitions '[{"name":"server","image":"patientor-server:local","essential":true,"memory":512,"cpu":256,"environment":[{"name":"DATABASE_URL","value":"postgresql://patientor:patientor@postgres:5432/patientor"},{"name":"PORT","value":"3001"}],"portMappings":[{"containerPort":3001,"hostPort":3001,"protocol":"tcp"}]}]' `
+  --endpoint-url $env:AWS_ENDPOINT_URL `
+  --region us-east-1
+```
+
+Run one task:
+
+```powershell
+$taskArn = aws ecs run-task `
+  --cluster patientor-dev `
+  --task-definition patientor-server `
+  --count 1 `
+  --query 'tasks[0].taskArn' `
+  --output text `
+  --endpoint-url $env:AWS_ENDPOINT_URL `
+  --region us-east-1
+
+aws ecs describe-tasks `
+  --cluster patientor-dev `
+  --tasks $taskArn `
+  --endpoint-url $env:AWS_ENDPOINT_URL `
+  --region us-east-1
+```
+
+Expected ECS result:
+
+```text
+task lastStatus: RUNNING
+container lastStatus: RUNNING
+backend logs: Listening on http://0.0.0.0:3001
+```
+
+## ECS Host-Access Proxy Workaround
+
+On this Windows Docker Desktop setup, Floci reported the ECS task port binding
+as `0.0.0.0:3001`, but the actual Docker container only showed `3001/tcp` and
+had no host `PortBindings`. As a result:
+
+```powershell
+curl.exe http://localhost:3001/api/v1/ping
+```
+
+failed from the host even though the backend was running inside Docker.
+
+Verify the backend from inside the ECS task container:
+
+```powershell
+docker exec floci-ecs-<task-id>-server node -e "fetch('http://127.0.0.1:3001/api/v1/ping').then(async r => { console.log(r.status); console.log(await r.text()) })"
+```
+
+Expected response:
+
+```text
+200
+"pong"
+```
+
+To expose the ECS task to the Windows host during the spike, run a temporary
+`socat` proxy on the Compose network:
+
+```powershell
+docker run -d `
+  --name patientor-ecs-proxy `
+  --network patientor-server_default `
+  -p 3001:3001 `
+  alpine/socat `
+  TCP-LISTEN:3001,fork,reuseaddr `
+  TCP:floci-ecs-<task-id>-server:3001
+```
+
+After the proxy is running:
+
+```powershell
+curl.exe http://localhost:3001/api/v1/ping
+```
+
+Expected response:
+
+```json
+"pong"
+```
+
+If the ECS task is recreated, the generated `floci-ecs-<task-id>-server`
+container name changes. Recreate the proxy with the new container name:
+
+```powershell
+docker rm -f patientor-ecs-proxy
+```
+
+Then run the proxy command again.
+
+Treat this as a spike workaround, not the final production-shaped ingress model.
+The next durable option to investigate is whether Floci should publish ECS task
+ports itself or whether this spike should model host access through Floci
+ELB/ALB.
+
+## Known Healthcheck Caveat
+
+The ECS task container may show `unhealthy` even when the backend is responding.
+The current Dockerfile healthcheck uses a shell command containing JavaScript
+template-literal backticks. Under Docker's `CMD-SHELL`, the shell can interpret
+those backticks before Node runs, producing errors shaped like:
+
+```text
+/bin/sh: 1: http://127.0.0.1:/api/v1/ping: not found
+```
+
+That healthcheck issue is separate from the ECS runtime proof. The backend can
+still be verified with the `docker exec ... fetch(...)` command above or through
+the `patientor-ecs-proxy` host-access proxy.
 
 ## Troubleshooting Checklist
 
@@ -209,6 +348,8 @@ Relevant containers:
 - `patientor-floci`
 - `floci-ecr-registry`
 - `floci-ecr-loopback`, when using the workaround
+- `floci-ecs-<task-id>-server`, when an ECS task is running
+- `patientor-ecs-proxy`, when exposing an ECS task to the Windows host
 
 Check networks:
 
@@ -227,4 +368,14 @@ docker logs --tail 80 floci-ecr-registry
 ```
 
 If `list-images` is empty but the raw registry has the tag, check that
-`floci-ecr-loopback` is running.
+`floci-ecr-loopback` is running. If it is running and the command still returns
+empty, do not block the ECS runtime spike on ECR metadata enumeration.
+
+If `curl.exe http://localhost:3001/api/v1/ping` fails but the ECS task is
+running, check whether the task container has host port bindings:
+
+```powershell
+docker inspect floci-ecs-<task-id>-server --format '{{json .HostConfig.PortBindings}}'
+```
+
+If this returns `{}`, use or recreate `patientor-ecs-proxy`.

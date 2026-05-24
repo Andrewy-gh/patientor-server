@@ -1,0 +1,15 @@
+.git
+.vite-hooks
+.zed
+node_modules
+**/node_modules
+**/build
+**/dist
+**/.env
+**/.env.*
+!.env.example
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+Dockerfile
+docker-compose*.yml

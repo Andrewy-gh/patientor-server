@@ -299,14 +299,22 @@ not depend on ECR repository metadata. ECR list/describe image behavior is still
 treated as unresolved for this spike, so Terraform should not use ECR image
 lookups before creating or updating the ECS service.
 
-Run it from PowerShell:
+Run it from PowerShell at the repo root. The doctor step checks Docker Desktop,
+the Compose services, the Floci endpoint, the local backend image, and local AWS
+CLI credentials before Terraform can get stuck waiting on a missing emulator:
 
 ```powershell
-cd infra/floci
+pnpm floci:up
+pnpm floci:doctor
+pnpm floci:tf:init
+pnpm floci:tf:plan
+pnpm floci:tf:apply
+```
 
-terraform init
-terraform plan
-terraform apply
+For manual AWS CLI verification, set the local Floci environment first:
+
+```powershell
+. .\scripts\floci-env.ps1
 ```
 
 Verify the service through Floci:
@@ -330,6 +338,9 @@ This Terraform slice does not model ALB/ELB, Docker image build/push, or the
 temporary `patientor-ecs-proxy` host-access workaround. If the ECS task is
 healthy but `curl.exe http://localhost:3001/api/v1/ping` fails from Windows,
 continue using the proxy workflow below.
+
+Track `infra/floci/.terraform.lock.hcl` for reproducible provider selection.
+Keep local Terraform state and plugin directories ignored.
 
 Important limitation: removing the underlying Docker container directly, for
 example through Docker Desktop or `docker rm -f`, did not immediately reconcile

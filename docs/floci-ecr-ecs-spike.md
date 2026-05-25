@@ -417,20 +417,25 @@ The next durable option to investigate is whether Floci should publish ECS task
 ports itself or whether this spike should model host access through Floci
 ELB/ALB.
 
-## Known Healthcheck Caveat
+## Healthcheck Form Note
 
-The ECS task container may show `unhealthy` even when the backend is responding.
-The current Dockerfile healthcheck uses a shell command containing JavaScript
-template-literal backticks. Under Docker's `CMD-SHELL`, the shell can interpret
-those backticks before Node runs, producing errors shaped like:
+The server Dockerfile uses Docker's exec-form `CMD` for the healthcheck:
 
-```text
-/bin/sh: 1: http://127.0.0.1:/api/v1/ping: not found
+```dockerfile
+CMD ["node", "-e", "const port = process.env.PORT || '3001'; fetch('http://127.0.0.1:' + port + '/api/v1/ping').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
 ```
 
-That healthcheck issue is separate from the ECS runtime proof. The backend can
-still be verified with the `docker exec ... fetch(...)` command above or through
-the `patientor-ecs-proxy` host-access proxy.
+That form runs Node directly and avoids the shell entirely. The inline script
+also builds the URL with string concatenation, so there are no JavaScript
+template-literal backticks for `/bin/sh` to interpret before Node runs.
+
+Keep that shape if the healthcheck changes. A `CMD-SHELL` string would let the
+shell process backticks or `$()` before Node sees the script, which can turn the
+URL into a shell command instead of a JavaScript string.
+
+If health status needs to be checked during the spike, the backend can still be
+verified with the `docker exec ... fetch(...)` command above or through the
+`patientor-ecs-proxy` host-access proxy.
 
 ## Troubleshooting Checklist
 

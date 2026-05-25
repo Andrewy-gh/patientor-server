@@ -285,6 +285,52 @@ new task startedBy: ecs-svc
 This proves Floci can keep a service at desired count when tasks are stopped
 through the ECS control plane.
 
+## Terraform Local ECS Slice
+
+The first local Terraform slice lives in `infra/floci`. It manages only the
+local Floci ECS resources that are already proven:
+
+- ECS cluster `patientor-dev`
+- ECS task definition family `patientor-server`
+- ECS service `patientor-server` with `desired_count = 1`
+
+It intentionally uses the local Docker image `patientor-server:local` and does
+not depend on ECR repository metadata. ECR list/describe image behavior is still
+treated as unresolved for this spike, so Terraform should not use ECR image
+lookups before creating or updating the ECS service.
+
+Run it from PowerShell:
+
+```powershell
+cd infra/floci
+
+terraform init
+terraform plan
+terraform apply
+```
+
+Verify the service through Floci:
+
+```powershell
+aws ecs describe-services `
+  --cluster patientor-dev `
+  --services patientor-server `
+  --endpoint-url http://localhost:4566 `
+  --region us-east-1
+```
+
+Expected service state:
+
+```text
+desiredCount: 1
+runningCount: 1
+```
+
+This Terraform slice does not model ALB/ELB, Docker image build/push, or the
+temporary `patientor-ecs-proxy` host-access workaround. If the ECS task is
+healthy but `curl.exe http://localhost:3001/api/v1/ping` fails from Windows,
+continue using the proxy workflow below.
+
 Important limitation: removing the underlying Docker container directly, for
 example through Docker Desktop or `docker rm -f`, did not immediately reconcile
 back into ECS task state. Docker no longer showed the container, but Floci still

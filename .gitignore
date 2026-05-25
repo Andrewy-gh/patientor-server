@@ -11,6 +11,11 @@ dist
 dist-ssr
 *.local
 
+# Terraform local state and plugins
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+
 # Editor directories and files
 .idea
 .DS_Store

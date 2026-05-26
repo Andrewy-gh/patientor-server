@@ -23,6 +23,24 @@ current Windows Docker Desktop path uses Floci ECR path-style URIs and a small
 loopback proxy so Floci's ECR control plane can enumerate images in the registry
 sidecar.
 
+## AWS deploy direction
+
+The intended production deploy path is AWS-shaped but Floci-rehearsable. Prefer
+workflow parity locally before adding real AWS-only behavior: image publish,
+one-off ECS migration task, ECS service deploy, then smoke test. Do not run
+database migrations from normal web container startup.
+
+Terraform should eventually manage production RDS for PostgreSQL, the app's
+database connectivity, and the required Secrets Manager wiring. For local
+rehearsal, prefer Floci RDS and Floci Secrets Manager over a hand-wired Compose
+Postgres URL when the goal is deploy parity.
+
+Known parity limits are acceptable but must be documented near the change:
+Floci ELBv2 currently models the control plane better than real ALB traffic
+forwarding, and real AWS remains the source of truth for RDS backups, deletion
+protection, HTTPS certificates, load balancer health behavior, and ECS rollback
+behavior. Keep production seed/demo data out of the default deploy path.
+
 ## Tooling
 
 This repo uses Vite+ through the `vp` command. Vite+ wraps Oxlint, Oxfmt,

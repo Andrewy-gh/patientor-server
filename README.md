@@ -34,6 +34,8 @@ pnpm ready
   preflight checks for the local ECS Terraform slice.
 - [Floci ECR/ECS spike notes](./docs/floci-ecr-ecs-spike.md): Windows Docker
   Desktop findings, Floci limitations, and local ECS workarounds.
+- [AWS ECS production scaffold](./infra/aws/README.md): first-deploy runbook
+  and image publish flow for the production ECS/Fargate path.
 
 ### Product And App Setup
 

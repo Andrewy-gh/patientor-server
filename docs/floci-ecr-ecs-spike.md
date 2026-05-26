@@ -299,9 +299,10 @@ not depend on ECR repository metadata. ECR list/describe image behavior is still
 treated as unresolved for this spike, so Terraform should not use ECR image
 lookups before creating or updating the ECS service.
 
-Run it from PowerShell at the repo root. The doctor step checks Docker Desktop,
-the Compose services, the Floci endpoint, the local backend image, and local AWS
-CLI credentials before Terraform can get stuck waiting on a missing emulator:
+Run it from PowerShell at the repo root. The doctor step checks that `docker`,
+`terraform`, and `aws` are available, verifies Docker Desktop, the Compose
+services, the Floci endpoint, and the local backend image, then sets the local
+AWS CLI environment for that doctor run:
 
 ```powershell
 pnpm floci:up

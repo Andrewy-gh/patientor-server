@@ -1,0 +1,27 @@
+# Copy this file to terraform.tfvars and replace every placeholder before apply.
+
+aws_region = "us-east-1"
+
+# Use IDs from the VPC that will host production traffic.
+vpc_id            = "vpc-replace-me"
+public_subnet_ids = ["subnet-public-a", "subnet-public-b"]
+
+# ECS tasks run in these subnets. Use private subnets with NAT for the usual
+# production path, or public subnets only if you accept public-IP task egress.
+private_subnet_ids = ["subnet-private-a", "subnet-private-b"]
+assign_public_ip   = false
+
+# Deploy an image tag that already exists in the ECR repository.
+image_tag = "replace-with-release-tag"
+
+# Secrets Manager ARN for the secret whose value is the production DATABASE_URL.
+database_url_secret_arn = "arn:aws:secretsmanager:us-east-1:REPLACE_WITH_ACCOUNT_ID:secret:patientor/prod/database-url"
+
+# Cost-conscious starter settings. Raise desired_count for high availability.
+desired_count      = 1
+task_cpu           = 256
+task_memory        = 512
+log_retention_days = 7
+
+# Tighten this to office/VPN CIDRs if the ALB should not be public.
+alb_ingress_cidr_ipv4 = "0.0.0.0/0"

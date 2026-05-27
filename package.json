@@ -13,6 +13,8 @@
     "floci:tf:init": "terraform -chdir=infra/floci init",
     "floci:tf:plan": "terraform -chdir=infra/floci plan",
     "floci:tf:apply": "terraform -chdir=infra/floci apply",
+    "floci:migrate": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/floci-run-migrations.ps1",
+    "floci:service:up": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/floci-service-up.ps1",
     "check": "vp check",
     "build": "vp run -r build",
     "test": "vp run -r test",

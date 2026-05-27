@@ -36,6 +36,8 @@ pnpm ready
   Desktop findings, Floci limitations, and local ECS workarounds.
 - [AWS ECS production scaffold](./infra/aws/README.md): first-deploy runbook
   and image publish flow for the production ECS/Fargate path.
+- [Deploy command checklists](./docs/deploy-command-checklists.md): numbered
+  Floci and AWS command sequences for migration-safe deploys.
 
 ### Product And App Setup
 

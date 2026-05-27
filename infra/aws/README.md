@@ -100,8 +100,7 @@ Safe first deploy sequence:
 6. Smoke test the service with the ALB DNS output:
 
    ```powershell
-   $alb = terraform -chdir=infra/aws output -raw load_balancer_dns_name
-   Invoke-WebRequest "http://$alb/api/v1/ping"
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-smoke-test.ps1
    ```
 
 For rollback, redeploy a previous immutable image tag that still exists in ECR:

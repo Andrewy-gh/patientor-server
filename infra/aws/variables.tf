@@ -51,10 +51,64 @@ variable "image_tag" {
   type        = string
 }
 
-variable "database_url_secret_arn" {
-  description = "Secrets Manager secret ARN containing the DATABASE_URL value."
+variable "database_identifier" {
+  description = "RDS instance identifier for the production PostgreSQL database."
   type        = string
-  sensitive   = true
+  default     = "patientor-server-postgres"
+}
+
+variable "database_name" {
+  description = "Initial PostgreSQL database name created by RDS."
+  type        = string
+  default     = "patientor"
+}
+
+variable "database_username" {
+  description = "Master database username used by the app connection string."
+  type        = string
+  default     = "patientor_app"
+}
+
+variable "database_url_secret_name" {
+  description = "Secrets Manager secret name that Terraform fills with the ECS DATABASE_URL value."
+  type        = string
+  default     = "patientor/prod/database-url"
+}
+
+variable "database_engine_version" {
+  description = "Optional PostgreSQL engine version. Leave null to use the AWS RDS default for new instances."
+  type        = string
+  default     = null
+}
+
+variable "database_instance_class" {
+  description = "RDS instance class for the production PostgreSQL database."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "database_allocated_storage" {
+  description = "Initial RDS storage in GiB."
+  type        = number
+  default     = 20
+}
+
+variable "database_max_allocated_storage" {
+  description = "Maximum RDS autoscaled storage in GiB."
+  type        = number
+  default     = 100
+}
+
+variable "database_backup_retention_days" {
+  description = "Number of days to retain automated RDS backups."
+  type        = number
+  default     = 7
+}
+
+variable "database_deletion_protection" {
+  description = "Whether RDS deletion protection is enabled."
+  type        = bool
+  default     = true
 }
 
 variable "container_port" {

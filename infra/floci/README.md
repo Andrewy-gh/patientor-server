@@ -84,6 +84,24 @@ This slice intentionally uses the local Docker image `patientor-server:local`.
 It does not build or push images, model ALB/ELB, manage RDS, manage the
 temporary host-access proxy, or depend on ECR image metadata.
 
+## Database And Secrets Parity
+
+The local rehearsal path still uses the Compose `patientor-postgres` container
+and passes `DATABASE_URL` directly in ECS container environment variables. That
+keeps the proven migration rehearsal working:
+
+- Terraform registers the web and migration task definitions.
+- The web service is first applied with `server_desired_count=0`.
+- `pnpm floci:migrate` runs the one-off migration task.
+- `pnpm floci:service:up` scales the service after migrations pass.
+
+Production AWS now has Terraform-managed RDS and Secrets Manager wiring in
+`infra/aws`. Floci RDS and ECS secret injection are intentionally not enabled in
+this slice because they have not been proven against the current Windows Docker
+Desktop Floci setup. The next parity step should test whether Floci can create
+an RDS-like PostgreSQL resource and inject a Secrets Manager value into ECS task
+containers without regressing the migration-task flow above.
+
 ## Local Deploy Rehearsal Order
 
 Use this order to keep the local path aligned with the intended production

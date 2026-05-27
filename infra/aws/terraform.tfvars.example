@@ -14,8 +14,18 @@ assign_public_ip   = false
 # Deploy an image tag that already exists in the ECR repository.
 image_tag = "replace-with-release-tag"
 
-# Secrets Manager ARN for the secret whose value is the production DATABASE_URL.
-database_url_secret_arn = "arn:aws:secretsmanager:us-east-1:REPLACE_WITH_ACCOUNT_ID:secret:patientor/prod/database-url"
+# RDS PostgreSQL and Secrets Manager settings managed by this Terraform root.
+# Leave database_engine_version unset unless you have chosen a specific
+# production PostgreSQL version supported by AWS RDS in this region.
+database_identifier       = "patientor-server-postgres"
+database_name             = "patientor"
+database_username         = "patientor_app"
+database_url_secret_name  = "patientor/prod/database-url"
+database_instance_class   = "db.t4g.micro"
+database_allocated_storage = 20
+database_max_allocated_storage = 100
+database_backup_retention_days = 7
+database_deletion_protection   = true
 
 # Cost-conscious starter settings. Raise desired_count for high availability.
 desired_count      = 1

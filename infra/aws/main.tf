@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.7"
+    }
   }
 }
 
@@ -18,7 +22,8 @@ provider "aws" {
 }
 
 locals {
-  name = var.name
+  name         = var.name
+  database_url = "postgresql://${var.database_username}:${urlencode(random_password.database.result)}@${aws_db_instance.app.address}:${aws_db_instance.app.port}/${var.database_name}"
 
   container_environment = concat(
     [
@@ -46,8 +51,6 @@ locals {
   )
 }
 
-data "aws_caller_identity" "current" {}
-
 resource "aws_ecr_repository" "app" {
   name                 = var.ecr_repository_name
   image_tag_mutability = "IMMUTABLE"
@@ -60,6 +63,29 @@ resource "aws_ecr_repository" "app" {
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${local.name}"
   retention_in_days = var.log_retention_days
+}
+
+resource "random_password" "database" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "aws_secretsmanager_secret" "database_url" {
+  name        = var.database_url_secret_name
+  description = "DATABASE_URL for the ${local.name} ECS tasks."
+}
+
+resource "aws_db_subnet_group" "app" {
+  name        = "${local.name}-db"
+  description = "Private subnets for the ${local.name} PostgreSQL database."
+  subnet_ids  = var.private_subnet_ids
+}
+
+resource "aws_security_group" "database" {
+  name        = "${local.name}-database"
+  description = "Allow ${local.name} ECS tasks to reach PostgreSQL."
+  vpc_id      = var.vpc_id
 }
 
 resource "aws_ecs_cluster" "app" {
@@ -90,7 +116,7 @@ resource "aws_iam_role_policy_attachment" "execution_managed" {
 data "aws_iam_policy_document" "execution_secrets" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [var.database_url_secret_arn]
+    resources = [aws_secretsmanager_secret.database_url.arn]
   }
 }
 
@@ -143,6 +169,46 @@ resource "aws_vpc_security_group_egress_rule" "service_all" {
   security_group_id = aws_security_group.service.id
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "database_from_service" {
+  security_group_id            = aws_security_group.database.id
+  referenced_security_group_id = aws_security_group.service.id
+  from_port                    = 5432
+  ip_protocol                  = "tcp"
+  to_port                      = 5432
+}
+
+resource "aws_db_instance" "app" {
+  identifier = var.database_identifier
+
+  allocated_storage     = var.database_allocated_storage
+  max_allocated_storage = var.database_max_allocated_storage
+  storage_encrypted     = true
+  storage_type          = "gp3"
+
+  engine         = "postgres"
+  engine_version = var.database_engine_version
+  instance_class = var.database_instance_class
+
+  db_name  = var.database_name
+  username = var.database_username
+  password = random_password.database.result
+  port     = 5432
+
+  db_subnet_group_name   = aws_db_subnet_group.app.name
+  vpc_security_group_ids = [aws_security_group.database.id]
+  publicly_accessible    = false
+
+  backup_retention_period   = var.database_backup_retention_days
+  deletion_protection       = var.database_deletion_protection
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "${var.database_identifier}-final-snapshot"
+}
+
+resource "aws_secretsmanager_secret_version" "database_url" {
+  secret_id     = aws_secretsmanager_secret.database_url.id
+  secret_string = local.database_url
 }
 
 resource "aws_lb" "app" {
@@ -210,7 +276,7 @@ resource "aws_ecs_task_definition" "app" {
       secrets = [
         {
           name      = "DATABASE_URL"
-          valueFrom = var.database_url_secret_arn
+          valueFrom = aws_secretsmanager_secret.database_url.arn
         }
       ]
 
@@ -224,6 +290,45 @@ resource "aws_ecs_task_definition" "app" {
       }
     }
   ])
+
+  depends_on = [aws_secretsmanager_secret_version.database_url]
+}
+
+resource "aws_ecs_task_definition" "migrations" {
+  family                   = "${local.name}-migrations"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = tostring(var.task_cpu)
+  memory                   = tostring(var.task_memory)
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "migrations"
+      image     = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
+      essential = true
+      command   = ["node", "build/src/db/migrate.js"]
+
+      secrets = [
+        {
+          name      = "DATABASE_URL"
+          valueFrom = aws_secretsmanager_secret.database_url.arn
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.app.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "migrations"
+        }
+      }
+    }
+  ])
+
+  depends_on = [aws_secretsmanager_secret_version.database_url]
 }
 
 resource "aws_ecs_service" "app" {

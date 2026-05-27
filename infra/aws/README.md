@@ -7,13 +7,17 @@ This Terraform root is a narrow production scaffold for running the Patientor se
 - AWS provider configuration using the Terraform AWS provider 6.x
 - ECR repository for the server image
 - CloudWatch log group for ECS task logs
+- RDS PostgreSQL instance in the private subnets
+- Security group allowing ECS tasks to reach PostgreSQL on port `5432`
+- Secrets Manager secret containing the ECS `DATABASE_URL`
 - ECS cluster
 - ECS task execution role with permission to pull images, write logs, and read the `DATABASE_URL` secret
 - ECS task role for application runtime permissions
 - Security groups for the ALB and ECS service
 - Internet-facing Application Load Balancer
 - Target group with `/api/v1/ping` health checks
-- Fargate task definition and ECS service
+- Fargate task definitions for the web service and one-off migrations
+- ECS service for the web server
 
 ## Prerequisites
 
@@ -23,8 +27,7 @@ Create or provide these outside this root:
 - Public subnets for the ALB
 - Private subnets for ECS tasks
 - NAT or other outbound path for private tasks when `assign_public_ip = false`
-- Secrets Manager secret containing the production `DATABASE_URL`
-- Any Route53, ACM, HTTPS listener, WAF, RDS, or database infrastructure
+- Any Route53, ACM, HTTPS listener, WAF, or CI/CD automation
 
 ## Image Flow
 
@@ -37,13 +40,29 @@ The task definition deploys:
 Push the production image to the ECR repository output by Terraform, then apply
 with the tag to deploy. Tags are immutable, so use a unique tag per release.
 
+## Database And Secrets
+
+Terraform now owns the production PostgreSQL path for this scaffold:
+
+- RDS PostgreSQL runs in `private_subnet_ids` and is not publicly accessible.
+- The database security group only accepts PostgreSQL traffic from the ECS task
+  security group.
+- Terraform generates the database password, uses it for the RDS master user,
+  and writes the complete app `DATABASE_URL` to Secrets Manager.
+- ECS task definitions consume that secret as the `DATABASE_URL` environment
+  variable.
+
+Treat the Terraform state for this root as sensitive. The generated database
+password is not printed as an output, but Terraform state necessarily contains
+the password and the secret value it manages.
+
 ## First Deploy Runbook
 
 This scaffold prepares the local pieces needed for a first AWS ECS production
 deploy:
 
 - Terraform for the ECS/Fargate runtime, ECR repository, ALB, task roles, logs,
-  task definition, and ECS service
+  RDS database, Secrets Manager wiring, task definitions, and ECS service
 - `terraform.tfvars.example` with the production inputs that must be supplied
 - `scripts/aws-publish-server-image.ps1` to build `apps/server/Dockerfile`, log
   in to ECR, tag the image, and push it
@@ -51,18 +70,18 @@ deploy:
 Before applying against a real AWS account, confirm these prerequisites:
 
 - AWS account and credentials with permission to manage ECR, ECS, IAM,
-  CloudWatch Logs, EC2 security groups, and load balancing
+  CloudWatch Logs, EC2 security groups, load balancing, RDS, and Secrets Manager
 - Existing VPC, public subnets for the ALB, and private subnets for ECS tasks
 - Outbound network path for private ECS tasks when `assign_public_ip = false`
-- Secrets Manager secret whose value is the production `DATABASE_URL`
 - Terraform, Docker, and AWS CLI installed locally
 - Terraform initialized in this root
 
 Safe first deploy sequence:
 
 1. Copy `infra/aws/terraform.tfvars.example` to `infra/aws/terraform.tfvars`.
-   Fill every placeholder, including `vpc_id`, subnets,
-   `database_url_secret_arn`, and a unique `image_tag`.
+   Fill every placeholder, including `vpc_id`, subnets, and a unique
+   `image_tag`. For a first deploy, set `desired_count = 0` so the service
+   stays scaled down until migrations pass.
 2. Initialize and review Terraform:
 
    ```powershell
@@ -70,12 +89,12 @@ Safe first deploy sequence:
    terraform -chdir=infra/aws plan
    ```
 
-3. Apply enough Terraform to create the ECR repository before publishing the
-   first image. A full ECS deploy needs an image tag that already exists in ECR,
-   so use a targeted apply for the repository when bootstrapping:
+3. Apply Terraform with `desired_count = 0`. This creates the ECR repository,
+   RDS database, `DATABASE_URL` secret, task definitions, and a scaled-down ECS
+   service.
 
    ```powershell
-   terraform -chdir=infra/aws apply -target=aws_ecr_repository.app
+   terraform -chdir=infra/aws apply
    ```
 
 4. Build and push the server image with the same tag from `terraform.tfvars`:
@@ -91,13 +110,19 @@ Safe first deploy sequence:
    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-publish-server-image.ps1 -Tag <tag> -RepositoryUrl <account>.dkr.ecr.<region>.amazonaws.com/patientor-server
    ```
 
-5. Apply Terraform with the same `image_tag` to create or update the runtime:
+5. Run the one-off migration task with the `migration_task_definition_arn`
+   output. Use the same private subnets and `service_security_group_id` output
+   for the Fargate network configuration. The command should run
+   `node build/src/db/migrate.js` from the production image and should complete
+   successfully before the web service is scaled up.
+
+6. Set `desired_count` to the intended service count and apply again:
 
    ```powershell
    terraform -chdir=infra/aws apply
    ```
 
-6. Smoke test the service with the ALB DNS output:
+7. Smoke test the service with the ALB DNS output:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-smoke-test.ps1
@@ -108,11 +133,16 @@ set `image_tag` back to that tag, then run `terraform -chdir=infra/aws apply`.
 
 ## Current Limitations
 
-- This root does not create RDS, the VPC, subnets, HTTPS certificates, Route53,
-  WAF, CI/CD, or database migration automation.
+- This root does not create the VPC, subnets, HTTPS certificates, Route53, WAF,
+  CI/CD, or a helper script for the AWS migration task.
+- RDS is a starter PostgreSQL instance, not a complete production database
+  posture. Real AWS remains the source of truth for backups, restore testing,
+  deletion protection, maintenance windows, performance sizing, and rollback
+  behavior.
 - AWS costs can accrue once resources are applied. NAT Gateway is a common
   production choice for private task egress, but it is not required by this root;
-  avoid creating one unless that cost and network path are intentional.
+  avoid creating one unless that cost and network path are intentional. RDS also
+  incurs cost while it exists.
 - The ALB listener is HTTP-only in this scaffold. Add HTTPS before exposing real
   production traffic.
 
@@ -124,7 +154,6 @@ vpc_id                  = "vpc-..."
 public_subnet_ids       = ["subnet-...", "subnet-..."]
 private_subnet_ids      = ["subnet-...", "subnet-..."]
 image_tag               = "..."
-database_url_secret_arn = "arn:aws:secretsmanager:..."
 ```
 
 ## Server Runtime
@@ -138,3 +167,19 @@ The container listens on port `3001` by default and receives:
 - Optional `OTEL_EXPORTER_OTLP_ENDPOINT`
 
 The ALB target group checks `GET /api/v1/ping`.
+
+## Local Floci Parity
+
+`infra/floci` is still the local rehearsal path for the deploy order:
+
+1. Build or publish the local image.
+2. Apply ECS resources with the service scaled down.
+3. Run the one-off migration task.
+4. Scale the service up.
+5. Smoke test.
+
+This AWS slice moves production RDS and Secrets Manager under Terraform first.
+The local Floci root still uses Compose Postgres and plain ECS environment
+variables for `DATABASE_URL` because that path is already proven. The next Floci
+parity slice should verify whether Floci RDS and ECS secret injection can model
+the same `DATABASE_URL` flow without breaking the working migration rehearsal.

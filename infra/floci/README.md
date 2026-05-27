@@ -97,10 +97,33 @@ keeps the proven migration rehearsal working:
 
 Production AWS now has Terraform-managed RDS and Secrets Manager wiring in
 `infra/aws`. Floci RDS and ECS secret injection are intentionally not enabled in
-this slice because they have not been proven against the current Windows Docker
-Desktop Floci setup. The next parity step should test whether Floci can create
-an RDS-like PostgreSQL resource and inject a Secrets Manager value into ECS task
-containers without regressing the migration-task flow above.
+this slice because the current Windows Docker Desktop Floci setup does not yet
+prove the full `DATABASE_URL` path.
+
+Spike result from 2026-05-27:
+
+- Floci RDS can create an RDS-like PostgreSQL resource through the AWS RDS API.
+  `aws rds create-db-instance` created a real `postgres:16-alpine` container
+  named `floci-rds-patientor-spike-rds`.
+- The RDS data plane is reachable on the Docker network through that generated
+  container name, for example
+  `postgresql://patientor:patientorpass@floci-rds-patientor-spike-rds:5432/patientor`.
+- The RDS API reported the endpoint as `localhost:7001`. That is useful from
+  the host only if the Floci Compose service publishes the RDS port range, but
+  it is not directly usable from an ECS task container because `localhost`
+  means the task container itself.
+- Floci Secrets Manager can store and return a `DATABASE_URL` value through
+  `create-secret` and `get-secret-value`.
+- Floci ECS accepted task definitions containing a `secrets` block, but did not
+  inject the Secrets Manager value into the running container. Disposable tasks
+  using both the secret ARN and the secret name exited with `DATABASE_URL=` and
+  a non-zero check status.
+
+Keep the current Compose Postgres plus plain ECS environment variable path as
+the default until Floci ECS secret injection works locally. If this is revisited,
+test ECS secret injection first; without it, switching Terraform to RDS and
+Secrets Manager would make the local migration task less production-shaped, not
+more.
 
 ## Local Deploy Rehearsal Order
 

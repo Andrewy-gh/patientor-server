@@ -84,6 +84,10 @@ This slice intentionally uses the local Docker image `patientor-server:local`.
 It does not build or push images, model ALB/ELB, manage RDS, manage the
 temporary host-access proxy, or depend on ECR image metadata.
 
+It also does not prove AWS VPC networking choices. NAT Gateway egress, VPC
+endpoints, private subnet reachability, and public task IP behavior must be
+validated in real AWS before treating an ECS deploy as production-ready.
+
 ## Database And Secrets Parity
 
 The local rehearsal path still uses the Compose `patientor-postgres` container

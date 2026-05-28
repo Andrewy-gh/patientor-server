@@ -30,7 +30,7 @@ variable "public_subnet_ids" {
 }
 
 variable "private_subnet_ids" {
-  description = "Existing private subnet IDs for Fargate tasks."
+  description = "Existing subnet IDs for ECS tasks, migration tasks, and the RDS subnet group. Use private subnets for production-shaped deploys; public subnets are learning-only when assign_public_ip is true."
   type        = list(string)
 }
 
@@ -136,7 +136,7 @@ variable "task_memory" {
 }
 
 variable "assign_public_ip" {
-  description = "Whether to assign public IPs to tasks. Keep false when private subnets have NAT egress."
+  description = "Whether to assign public IPs to ECS tasks. Keep false for private subnets with NAT Gateway or required VPC endpoints; true is only for learning-only public subnet smoke deploys."
   type        = bool
   default     = false
 }

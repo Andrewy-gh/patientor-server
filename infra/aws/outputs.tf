@@ -44,8 +44,13 @@ output "service_security_group_id" {
 }
 
 output "private_subnet_ids" {
-  description = "Private subnet IDs used by ECS tasks, migration tasks, and the RDS subnet group."
+  description = "Subnet IDs used by ECS tasks, migration tasks, and the RDS subnet group."
   value       = var.private_subnet_ids
+}
+
+output "assign_public_ip" {
+  description = "Whether ECS service and one-off migration tasks assign public IPs."
+  value       = var.assign_public_ip
 }
 
 output "log_group_name" {

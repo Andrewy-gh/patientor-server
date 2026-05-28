@@ -25,9 +25,44 @@ Create or provide these outside this root:
 
 - VPC
 - Public subnets for the ALB
-- Private subnets for ECS tasks
-- NAT or other outbound path for private tasks when `assign_public_ip = false`
+- Subnets for ECS tasks and RDS
+- NAT Gateway or required VPC endpoints when ECS tasks stay private with
+  `assign_public_ip = false`
 - Any Route53, ACM, HTTPS listener, WAF, or CI/CD automation
+
+## AWS Networking Decision
+
+This root deliberately uses real AWS networking inputs instead of trying to
+model VPC reachability in Floci. Floci is still useful for rehearsing deploy
+order, but it cannot honestly prove NAT, VPC endpoint, private subnet, or public
+IP behavior for AWS Fargate tasks.
+
+Terraform does not create the VPC, subnet route tables, NAT Gateway, or VPC
+endpoints. The ECS service and one-off migration task use
+`private_subnet_ids`; the ALB uses `public_subnet_ids`. RDS also uses
+`private_subnet_ids` and is configured with `publicly_accessible = false`.
+
+Choose one AWS networking path before applying:
+
+- Learning-only first smoke deploy: use public subnets for ECS tasks and set
+  `assign_public_ip = true`. With the current variables, that means supplying
+  public subnet IDs in `private_subnet_ids`. This avoids NAT Gateway cost while
+  proving that the image, task definition, migration, service, ALB, and smoke
+  test work in real AWS. Treat it as temporary and less production-shaped:
+  tasks receive public IPs, and the RDS subnet group is not using private-only
+  subnets even though the database itself is still not publicly accessible.
+- Production-common deploy: use private subnets in `private_subnet_ids`, keep
+  `assign_public_ip = false`, and provide NAT Gateway egress. ECS tasks have no
+  public IPs and use NAT to pull the ECR image, read `DATABASE_URL` from Secrets
+  Manager, and write CloudWatch Logs.
+- Private/no-NAT deploy: use private subnets in `private_subnet_ids`, keep
+  `assign_public_ip = false`, and provide the required VPC endpoints. At
+  minimum, Fargate image pull and runtime startup need ECR API
+  `com.amazonaws.<region>.ecr.api`, ECR Docker
+  `com.amazonaws.<region>.ecr.dkr`, an S3 gateway endpoint for image layers,
+  Secrets Manager `com.amazonaws.<region>.secretsmanager`, and CloudWatch Logs
+  `com.amazonaws.<region>.logs`. Enable private DNS for the interface
+  endpoints and allow the task security group to reach them on HTTPS.
 
 ## Image Flow
 
@@ -73,8 +108,9 @@ Before applying against a real AWS account, confirm these prerequisites:
 
 - AWS account and credentials with permission to manage ECR, ECS, IAM,
   CloudWatch Logs, EC2 security groups, load balancing, RDS, and Secrets Manager
-- Existing VPC, public subnets for the ALB, and private subnets for ECS tasks
-- Outbound network path for private ECS tasks when `assign_public_ip = false`
+- Existing VPC, public subnets for the ALB, and a chosen ECS task subnet path
+- NAT Gateway or the required VPC endpoints when private ECS tasks use
+  `assign_public_ip = false`
 - Terraform, Docker, and AWS CLI installed locally
 - Terraform initialized in this root
 
@@ -82,8 +118,9 @@ Safe first deploy sequence:
 
 1. Copy `infra/aws/terraform.tfvars.example` to `infra/aws/terraform.tfvars`.
    Fill every placeholder, including `vpc_id`, subnets, and a unique
-   `image_tag`. For a first deploy, set `desired_count = 0` so the service
-   stays scaled down until migrations pass.
+   `image_tag`. Choose the AWS networking path above before the first plan. For
+   a first deploy, set `desired_count = 0` so the service stays scaled down
+   until migrations pass.
 2. Initialize and review Terraform:
 
    ```powershell
@@ -113,9 +150,10 @@ Safe first deploy sequence:
    ```
 
 5. Run the one-off migration task. The helper reads Terraform outputs for the
-   ECS cluster name, migration task definition ARN, private subnet IDs, and ECS
-   service security group ID. The task receives `DATABASE_URL` from Secrets
-   Manager, waits until it stops, and requires container exit code `0`.
+   ECS cluster name, migration task definition ARN, task subnet IDs, ECS service
+   security group ID, and `assign_public_ip` setting. The task receives
+   `DATABASE_URL` from Secrets Manager, waits until it stops, and requires
+   container exit code `0`.
 
    ```powershell
    pnpm aws:migrate
@@ -139,7 +177,10 @@ set `image_tag` back to that tag, then run `terraform -chdir=infra/aws apply`.
 ## Current Limitations
 
 - This root does not create the VPC, subnets, HTTPS certificates, Route53, WAF,
-  CI/CD, or a helper script for the AWS migration task.
+  or CI/CD automation.
+- This root does not create NAT Gateway or VPC endpoints. Private tasks need one
+  of those AWS networking paths before they can pull images, read secrets, and
+  write logs.
 - RDS is a starter PostgreSQL instance, not a complete production database
   posture. Real AWS remains the source of truth for backups, restore testing,
   deletion protection, maintenance windows, performance sizing, and rollback
@@ -158,6 +199,7 @@ aws_region              = "us-east-1"
 vpc_id                  = "vpc-..."
 public_subnet_ids       = ["subnet-...", "subnet-..."]
 private_subnet_ids      = ["subnet-...", "subnet-..."]
+assign_public_ip        = false
 image_tag               = "..."
 ```
 
@@ -188,3 +230,5 @@ The local Floci root still uses Compose Postgres and plain ECS environment
 variables for `DATABASE_URL` because that path is already proven. The next Floci
 parity slice should verify whether Floci RDS and ECS secret injection can model
 the same `DATABASE_URL` flow without breaking the working migration rehearsal.
+AWS NAT, VPC endpoint, private subnet, and public IP reachability remain
+real-AWS proof points rather than Floci proof points.

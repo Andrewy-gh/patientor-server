@@ -19,6 +19,7 @@ This script reads these Terraform outputs from infra/aws:
   migration_task_definition_arn
   private_subnet_ids
   service_security_group_id
+  assign_public_ip
 
 The migration task receives DATABASE_URL from AWS Secrets Manager through the
 ECS task definition. That DATABASE_URL points at the Terraform-managed RDS
@@ -85,11 +86,22 @@ function Get-MigrationSettings($awsInfraPath) {
     Fail "Terraform output private_subnet_ids did not contain any subnets."
   }
 
+  $assignPublicIpRaw = (Get-TerraformOutputRaw $awsInfraPath "assign_public_ip").ToLowerInvariant()
+  if ($assignPublicIpRaw -ne "true" -and $assignPublicIpRaw -ne "false") {
+    Fail "Terraform output assign_public_ip must be true or false."
+  }
+
+  $assignPublicIp = "DISABLED"
+  if ($assignPublicIpRaw -eq "true") {
+    $assignPublicIp = "ENABLED"
+  }
+
   return [pscustomobject]@{
     Cluster = Get-TerraformOutputRaw $awsInfraPath "ecs_cluster_name"
     TaskDefinition = Get-TerraformOutputRaw $awsInfraPath "migration_task_definition_arn"
     SecurityGroup = Get-TerraformOutputRaw $awsInfraPath "service_security_group_id"
     PrivateSubnets = $privateSubnets
+    AssignPublicIp = $assignPublicIp
   }
 }
 
@@ -151,6 +163,7 @@ if ($DryRun) {
   Write-Host "  migration_task_definition_arn"
   Write-Host "  private_subnet_ids"
   Write-Host "  service_security_group_id"
+  Write-Host "  assign_public_ip"
   Write-Host ""
   Write-Host "[dry-run] Would call aws ecs run-task with the migration task definition."
   Write-Host "[dry-run] Would wait for the task to stop and require container exit code 0."
@@ -159,7 +172,7 @@ if ($DryRun) {
 
 $settings = Get-MigrationSettings $awsInfraPath
 $subnetList = $settings.PrivateSubnets -join ","
-$networkConfiguration = "awsvpcConfiguration={subnets=[$subnetList],securityGroups=[$($settings.SecurityGroup)],assignPublicIp=DISABLED}"
+$networkConfiguration = "awsvpcConfiguration={subnets=[$subnetList],securityGroups=[$($settings.SecurityGroup)],assignPublicIp=$($settings.AssignPublicIp)}"
 
 Write-Host ""
 Write-Host "Running AWS ECS migration task:"
@@ -167,6 +180,7 @@ Write-Host "  Cluster:         $($settings.Cluster)"
 Write-Host "  Task definition: $($settings.TaskDefinition)"
 Write-Host "  Subnets:         $subnetList"
 Write-Host "  Security group:  $($settings.SecurityGroup)"
+Write-Host "  Assign public IP: $($settings.AssignPublicIp)"
 Write-Host ""
 
 $runTaskJson = Invoke-External -Name "aws" -Arguments @(

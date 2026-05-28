@@ -77,29 +77,42 @@ order.
 
 ## AWS First Deploy
 
-1. Copy and fill the AWS Terraform variables.
+1. Choose the real AWS networking path.
+   - Learning-only smoke deploy: put public subnet IDs in `private_subnet_ids`
+     and set `assign_public_ip = true`. This avoids NAT Gateway cost, but tasks
+     receive public IPs and the shape is temporary.
+   - Production-common deploy: private subnets with `assign_public_ip = false`
+     and NAT Gateway egress.
+   - Private/no-NAT deploy: private subnets with `assign_public_ip = false` and
+     VPC endpoints for ECR API, ECR Docker, S3, Secrets Manager, and CloudWatch
+     Logs.
+
+   Floci does not prove these network paths; this is an AWS-only proof point.
+
+2. Copy and fill the AWS Terraform variables.
 
    ```powershell
    Copy-Item infra/aws/terraform.tfvars.example infra/aws/terraform.tfvars
    ```
 
    Set real values for `aws_region`, `vpc_id`, `public_subnet_ids`,
-   `private_subnet_ids`, and `image_tag`. For the first deploy, keep
-   `desired_count = 0` so the web service stays down until migrations pass.
+   `private_subnet_ids`, `assign_public_ip`, and `image_tag`. For the first
+   deploy, keep `desired_count = 0` so the web service stays down until
+   migrations pass.
 
-2. Initialize the AWS Terraform root.
+3. Initialize the AWS Terraform root.
 
    ```powershell
    terraform -chdir=infra/aws init
    ```
 
-3. Review the AWS plan before creating paid resources.
+4. Review the AWS plan before creating paid resources.
 
    ```powershell
    terraform -chdir=infra/aws plan
    ```
 
-4. Apply the AWS scaffold with the web service scaled down.
+5. Apply the AWS scaffold with the web service scaled down.
 
    ```powershell
    terraform -chdir=infra/aws apply
@@ -108,42 +121,43 @@ order.
    This creates ECR, RDS, Secrets Manager `DATABASE_URL`, ECS task definitions,
    the ALB, and an ECS service with `desired_count = 0`.
 
-5. Build and push the server image to ECR.
+6. Build and push the server image to ECR.
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-publish-server-image.ps1 -Tag <tag>
    ```
 
-6. Run the production migration as a one-off Fargate task.
+7. Run the production migration as a one-off Fargate task.
 
    ```powershell
    pnpm aws:migrate
    ```
 
-   The script reads the ECS cluster, migration task definition, private subnets,
-   and ECS service security group from Terraform outputs. The task gets
-   `DATABASE_URL` from AWS Secrets Manager and must exit with code `0`.
+   The script reads the ECS cluster, migration task definition, task subnets,
+   ECS service security group, and `assign_public_ip` from Terraform outputs.
+   The task gets `DATABASE_URL` from AWS Secrets Manager and must exit with
+   code `0`.
 
-7. Scale the web service up by setting `desired_count` in
+8. Scale the web service up by setting `desired_count` in
    `infra/aws/terraform.tfvars`.
 
    ```hcl
    desired_count = 1
    ```
 
-8. Apply the service scale-up.
+9. Apply the service scale-up.
 
    ```powershell
    terraform -chdir=infra/aws apply
    ```
 
-9. Smoke test through the ALB.
+10. Smoke test through the ALB.
 
-   ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-smoke-test.ps1
-   ```
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-smoke-test.ps1
+```
 
-10. Optional rollback: redeploy a previous immutable image tag.
+11. Optional rollback: redeploy a previous immutable image tag.
 
     ```powershell
     terraform -chdir=infra/aws apply -var "image_tag=<previous-tag>"

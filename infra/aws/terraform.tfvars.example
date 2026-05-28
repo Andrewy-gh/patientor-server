@@ -6,8 +6,13 @@ aws_region = "us-east-1"
 vpc_id            = "vpc-replace-me"
 public_subnet_ids = ["subnet-public-a", "subnet-public-b"]
 
-# ECS tasks run in these subnets. Use private subnets with NAT for the usual
-# production path, or public subnets only if you accept public-IP task egress.
+# ECS tasks, migration tasks, and the RDS subnet group use these subnets.
+# Production-common: private subnets plus NAT Gateway, with assign_public_ip=false.
+# Private/no-NAT: private subnets plus VPC endpoints for ECR API, ECR Docker,
+# S3, Secrets Manager, and CloudWatch Logs, with assign_public_ip=false.
+# Learning-only smoke deploy: put public subnet IDs here and set
+# assign_public_ip=true. This avoids NAT cost but gives ECS tasks public IPs and
+# is less production-shaped.
 private_subnet_ids = ["subnet-private-a", "subnet-private-b"]
 assign_public_ip   = false
 

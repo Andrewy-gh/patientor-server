@@ -36,8 +36,14 @@ pnpm ready
   Desktop findings, Floci limitations, and local ECS workarounds.
 - [AWS ECS production scaffold](./infra/aws/README.md): first-deploy runbook
   and image publish flow for the production ECS/Fargate path.
+- [AWS cost and cleanup checklist](./docs/aws-cost-cleanup-checklist.md):
+  paid resource guardrails, before-apply checks, and teardown decisions for
+  real AWS trials.
 - [Deploy command checklists](./docs/deploy-command-checklists.md): numbered
   Floci and AWS command sequences for migration-safe deploys.
+- [API domain and HTTPS plan](./docs/api-domain-https-plan.md): intended
+  `api.<owned-domain>` path, Squarespace DNS validation, and future ALB HTTPS
+  Terraform shape.
 
 ### Product And App Setup
 

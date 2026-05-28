@@ -77,6 +77,10 @@ order.
 
 ## AWS First Deploy
 
+Read [AWS cost and cleanup checklist](./aws-cost-cleanup-checklist.md) before
+running the AWS commands. It explains which resources keep billing after apply
+and which cleanup decision should be made after testing.
+
 1. Choose the real AWS networking path.
    - Learning-only smoke deploy: put public subnet IDs in `private_subnet_ids`
      and set `assign_public_ip = true`. This avoids NAT Gateway cost, but tasks

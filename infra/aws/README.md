@@ -2,6 +2,11 @@
 
 This Terraform root is a narrow production scaffold for running the Patientor server on real AWS ECS Fargate. It is separate from `infra/floci`, which is local-only.
 
+Before applying this root in a real AWS account, read the
+[AWS cost and cleanup checklist](../../docs/aws-cost-cleanup-checklist.md).
+It calls out the paid resources, the `desired_count = 0` guardrail, RDS
+deletion-protection choices, final snapshots, and after-test cleanup steps.
+
 ## What This Creates
 
 - AWS provider configuration using the Terraform AWS provider 6.x
@@ -114,6 +119,11 @@ Before applying against a real AWS account, confirm these prerequisites:
 - Terraform, Docker, and AWS CLI installed locally
 - Terraform initialized in this root
 
+The future CI/CD shape is documented in
+[`docs/ci-cd-plan.md`](../../docs/ci-cd-plan.md). Keep this first deploy
+manual until the Terraform state backend, approvals, networking choice, and
+rollback policy are settled.
+
 Safe first deploy sequence:
 
 1. Copy `infra/aws/terraform.tfvars.example` to `infra/aws/terraform.tfvars`.
@@ -191,6 +201,9 @@ set `image_tag` back to that tag, then run `terraform -chdir=infra/aws apply`.
   incurs cost while it exists.
 - The ALB listener is HTTP-only in this scaffold. Add HTTPS before exposing real
   production traffic.
+
+For the practical before-apply and after-testing checklist, use
+[AWS cost and cleanup checklist](../../docs/aws-cost-cleanup-checklist.md).
 
 ## Required Variables
 

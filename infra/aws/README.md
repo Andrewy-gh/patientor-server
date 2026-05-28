@@ -66,6 +66,8 @@ deploy:
 - `terraform.tfvars.example` with the production inputs that must be supplied
 - `scripts/aws-publish-server-image.ps1` to build `apps/server/Dockerfile`, log
   in to ECR, tag the image, and push it
+- `scripts/aws-run-migrations.ps1` to run the one-off ECS migration task and
+  require exit code `0`
 
 Before applying against a real AWS account, confirm these prerequisites:
 
@@ -110,11 +112,14 @@ Safe first deploy sequence:
    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-publish-server-image.ps1 -Tag <tag> -RepositoryUrl <account>.dkr.ecr.<region>.amazonaws.com/patientor-server
    ```
 
-5. Run the one-off migration task with the `migration_task_definition_arn`
-   output. Use the same private subnets and `service_security_group_id` output
-   for the Fargate network configuration. The command should run
-   `node build/src/db/migrate.js` from the production image and should complete
-   successfully before the web service is scaled up.
+5. Run the one-off migration task. The helper reads Terraform outputs for the
+   ECS cluster name, migration task definition ARN, private subnet IDs, and ECS
+   service security group ID. The task receives `DATABASE_URL` from Secrets
+   Manager, waits until it stops, and requires container exit code `0`.
+
+   ```powershell
+   pnpm aws:migrate
+   ```
 
 6. Set `desired_count` to the intended service count and apply again:
 

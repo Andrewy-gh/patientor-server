@@ -114,66 +114,36 @@ order.
    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-publish-server-image.ps1 -Tag <tag>
    ```
 
-6. Read the migration task settings from Terraform outputs.
+6. Run the production migration as a one-off Fargate task.
 
    ```powershell
-   $cluster = terraform -chdir=infra/aws output -raw ecs_cluster_name
-   $taskDefinition = terraform -chdir=infra/aws output -raw migration_task_definition_arn
-   $securityGroup = terraform -chdir=infra/aws output -raw service_security_group_id
-   $subnets = ((terraform -chdir=infra/aws output -json private_subnet_ids | ConvertFrom-Json) -join ",")
+   pnpm aws:migrate
    ```
 
-7. Run the production migration as a one-off Fargate task.
+   The script reads the ECS cluster, migration task definition, private subnets,
+   and ECS service security group from Terraform outputs. The task gets
+   `DATABASE_URL` from AWS Secrets Manager and must exit with code `0`.
+
+7. Scale the web service up by setting `desired_count` in
+   `infra/aws/terraform.tfvars`.
+
+   ```hcl
+   desired_count = 1
+   ```
+
+8. Apply the service scale-up.
 
    ```powershell
-   $taskArn = aws ecs run-task `
-     --cluster $cluster `
-     --task-definition $taskDefinition `
-     --launch-type FARGATE `
-     --network-configuration "awsvpcConfiguration={subnets=[$subnets],securityGroups=[$securityGroup],assignPublicIp=DISABLED}" `
-     --count 1 `
-     --query "tasks[0].taskArn" `
-     --output text
+   terraform -chdir=infra/aws apply
    ```
 
-8. Wait for the migration task to finish.
+9. Smoke test through the ALB.
 
    ```powershell
-   aws ecs wait tasks-stopped --cluster $cluster --tasks $taskArn
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-smoke-test.ps1
    ```
 
-9. Check that the migration container exited successfully.
-
-   ```powershell
-   aws ecs describe-tasks `
-     --cluster $cluster `
-     --tasks $taskArn `
-     --query "tasks[0].containers[0].exitCode" `
-     --output text
-   ```
-
-   Expected result: `0`.
-
-10. Scale the web service up by setting `desired_count` in
-    `infra/aws/terraform.tfvars`.
-
-    ```hcl
-    desired_count = 1
-    ```
-
-11. Apply the service scale-up.
-
-    ```powershell
-    terraform -chdir=infra/aws apply
-    ```
-
-12. Smoke test through the ALB.
-
-    ```powershell
-    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\aws-smoke-test.ps1
-    ```
-
-13. Optional rollback: redeploy a previous immutable image tag.
+10. Optional rollback: redeploy a previous immutable image tag.
 
     ```powershell
     terraform -chdir=infra/aws apply -var "image_tag=<previous-tag>"

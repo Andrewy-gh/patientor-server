@@ -102,7 +102,8 @@ and which cleanup decision should be made after testing.
    Set real values for `aws_region`, `vpc_id`, `public_subnet_ids`,
    `private_subnet_ids`, `assign_public_ip`, and `image_tag`. For the first
    deploy, keep `desired_count = 0` so the web service stays down until
-   migrations pass.
+   migrations pass. Terraform also defaults this value to `0` so an omitted
+   setting does not start web tasks early.
 
 3. Initialize the AWS Terraform root.
 

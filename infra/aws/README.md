@@ -129,8 +129,9 @@ Safe first deploy sequence:
 1. Copy `infra/aws/terraform.tfvars.example` to `infra/aws/terraform.tfvars`.
    Fill every placeholder, including `vpc_id`, subnets, and a unique
    `image_tag`. Choose the AWS networking path above before the first plan. For
-   a first deploy, set `desired_count = 0` so the service stays scaled down
-   until migrations pass.
+   a first deploy, keep `desired_count = 0` so the service stays scaled down
+   until migrations pass. Terraform also defaults this value to `0` so an
+   omitted setting does not start web tasks early.
 2. Initialize and review Terraform:
 
    ```powershell

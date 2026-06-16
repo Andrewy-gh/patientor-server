@@ -32,8 +32,9 @@ database_max_allocated_storage = 100
 database_backup_retention_days = 7
 database_deletion_protection   = true
 
-# Cost-conscious starter settings. Raise desired_count for high availability.
-desired_count      = 1
+# First deploy safety: keep the web service down until migrations pass.
+# Raise desired_count after `pnpm aws:migrate` succeeds.
+desired_count      = 0
 task_cpu           = 256
 task_memory        = 512
 log_retention_days = 7

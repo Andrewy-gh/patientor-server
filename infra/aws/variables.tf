@@ -118,9 +118,9 @@ variable "container_port" {
 }
 
 variable "desired_count" {
-  description = "Number of Fargate tasks to run."
+  description = "Number of Fargate web service tasks to run. Keep 0 for first deploy until migrations pass."
   type        = number
-  default     = 2
+  default     = 0
 }
 
 variable "task_cpu" {
